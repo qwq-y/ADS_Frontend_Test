@@ -64,8 +64,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     @Override
                     public void run() {
                         try {
-                            testOkhttpGet("http://10.25.6.55:80/posts");
-                        } catch (IOException e) {
+                            // 处理按钮点击事件
+//                            okhttpGet("http://10.25.6.55:80/posts");
+                            testLogin();
+
+                        } catch (Exception e) {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -81,7 +84,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void testOkhttpGet(String url) throws IOException {
+    private void okhttpGet(String url) throws IOException {
         OkHttpClient client = new OkHttpClient();
 
         okhttp3.Request request = new okhttp3.Request.Builder()
@@ -101,41 +104,50 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
     private void testLogin() {
-        Map<String, Object> params = new HashMap<>();
-        params.put("studentId", 12121212L);
+        Map<String, String> params = new HashMap<>();
+        params.put("studentId", "12121212");
         params.put("password", "12121212");
-        doOkHttpGet(targetUrl, params);
+        okhttpGet(targetUrl, params);
     }
 
-    private void doOkHttpGet(String url, Map params) {
+    private void okhttpGet(String url, Map params) {
         OkHttpClient httpClient = new OkHttpClient();
 
-//        HttpUrl.Builder httpUrl = HttpUrl.parse(url).newBuilder();
-//        Map<String, String> map = new HashMap<String, String>(params);
-//        for(Map.Entry<String,String> entry : map.entrySet()){
-//            httpUrl.addQueryParameter(entry.getKey(),entry.getValue());
-//        }
+        HttpUrl.Builder httpUrl = HttpUrl.parse(url).newBuilder();
+        Map<String, String> map = new HashMap<String, String>(params);
+        for(Map.Entry<String,String> entry : map.entrySet()){
+            httpUrl.addQueryParameter(entry.getKey(),entry.getValue());
+        }
 
         okhttp3.Request request = new okhttp3.Request.Builder()
-//                .url(httpUrl.build())
-                .url("http://www.baidu.com")
+                .url(httpUrl.build())
                 .build();
         httpClient.newCall(request).enqueue(new okhttp3.Callback() {
             @Override
             public void onResponse(okhttp3.Call call, okhttp3.Response response) throws IOException {
                 // 处理响应
                 String responseBody = response.body().string();
-                textView.setText(responseBody);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        textView.setText(responseBody);
+                    }
+                });
             }
             @Override
             public void onFailure(Call call, IOException e) {
-                textView.setText("Error: " + e.getMessage());
                 e.printStackTrace();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        textView.setText("Error: " + e.getMessage());
+                    }
+                });
             }
         });
     }
 
-    private void useJsonRequestGet() {
+    private void volleyGet() {
 
 //        ------------------------------------------------------------------------------
 //      无参的GET方法
