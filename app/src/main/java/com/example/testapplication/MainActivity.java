@@ -34,15 +34,18 @@ import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.FormBody;
 import okhttp3.HttpUrl;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Button sendButton;
     TextView textView;
 
-    private String targetUrl = "http://10.25.6.55:80/users/login";
+//    private String targetUrl = "http://10.25.6.55:80/users/login";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,7 +69,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         try {
                             // 处理按钮点击事件
 //                            okhttpGet("http://10.25.6.55:80/posts");
-                            testLogin();
+//                            testLogin();
+                            testSignup();
 
                         } catch (Exception e) {
                             runOnUiThread(new Runnable() {
@@ -82,6 +86,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 textView.setText(e.getMessage());
             }
         }
+    }
+
+    private void testLogin() {
+        Map<String, String> params = new HashMap<>();
+        params.put("studentId", "12121212");
+        params.put("password", "12121212");
+        okhttpGet("http://10.25.6.55:80/users/login", params);
+    }
+
+    private void testSignup() {
+        Map<String, String> params = new HashMap<>();
+        params.put("studentId", "12345671");
+        params.put("name", "hihi");
+        params.put("password", "password123");
+        params.put("type", "user");
+        okhttpPost("http://10.25.6.55:80/users", params);
     }
 
     private void okhttpGet(String url) throws IOException {
@@ -102,16 +122,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-
-    private void testLogin() {
-        Map<String, String> params = new HashMap<>();
-        params.put("studentId", "12121212");
-        params.put("password", "12121212");
-        okhttpGet(targetUrl, params);
-    }
-
-    private void okhttpGet(String url, Map params) {
-        OkHttpClient httpClient = new OkHttpClient();
+    private void okhttpGet(String url, Map<String, String> params) {
+        OkHttpClient client = new OkHttpClient();
 
         HttpUrl.Builder httpUrl = HttpUrl.parse(url).newBuilder();
         Map<String, String> map = new HashMap<String, String>(params);
@@ -122,7 +134,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         okhttp3.Request request = new okhttp3.Request.Builder()
                 .url(httpUrl.build())
                 .build();
-        httpClient.newCall(request).enqueue(new okhttp3.Callback() {
+        client.newCall(request).enqueue(new okhttp3.Callback() {
             @Override
             public void onResponse(okhttp3.Call call, okhttp3.Response response) throws IOException {
                 // 处理响应
@@ -147,77 +159,44 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
     }
 
-    private void volleyGet() {
+    private void okhttpPost(String url, Map<String, String> params) {
+        OkHttpClient client = new OkHttpClient();
 
-//        ------------------------------------------------------------------------------
-//      无参的GET方法
-        RequestQueue queue = Volley.newRequestQueue(this);
-        String urlTest = "http://10.25.6.55:80/posts";
-//        String urlTest = "http://10.25.6.55:80/users/login?studentId=11435142&password=12345678";
+        FormBody.Builder formBodyBuilder = new FormBody.Builder();
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            formBodyBuilder.add(entry.getKey(), entry.getValue());
+        }
+        RequestBody requestBody = formBodyBuilder.build();
 
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, urlTest,
-                new Response.Listener<String>() {
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .post(requestBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, okhttp3.Response response) throws IOException {
+                // 处理响应
+                String responseBody = response.body().string();
+                runOnUiThread(new Runnable() {
                     @Override
-                    public void onResponse(String response) {
-                        textView.setText("Response is: " + response.substring(0, 300));
+                    public void run() {
+                        textView.setText(responseBody);
                     }
-                }, new Response.ErrorListener() {
+                });
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                runOnUiThread(new Runnable() {
                     @Override
-                    public void onErrorResponse(VolleyError error) {
-                        String errorString = "Error: " + error.getMessage();
-                        textView.setText(errorString);
-                        error.printStackTrace();
+                    public void run() {
+                        textView.setText("Error: " + e.getMessage());
                     }
+                });
+            }
         });
-
-        queue.add(stringRequest);
-
-//        ------------------------------------------------------------------------------
-
-//        RequestQueue requestQueue = Volley.newRequestQueue(this);
-//
-//        JSONObject jsonObject = new JSONObject();
-//        try {
-//            // 构建JSON请求体
-//            jsonObject.put("studentId", 21212121L);
-//            jsonObject.put("name", "gm");
-//            jsonObject.put("password", "12345678");
-//            jsonObject.put("type", "user");
-//        } catch (JSONException e) {
-//            e.printStackTrace();
-//        }
-//
-////        long studentId = 11435142;
-////        String password = "12345678";
-////        String url = targetUrl + "/login?studentId=" + studentId + "&password=" + password;
-//
-//        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, targetUrl, null,
-//                new Response.Listener<JSONObject>() {
-//                    @Override
-//                    public void onResponse(JSONObject response) {
-//                        // 请求成功，可以在这里处理返回的数据
-//                        textView.setText("Response is: " + response);
-//                    }
-//                },
-//                new Response.ErrorListener() {
-//                    @Override
-//                    public void onErrorResponse(VolleyError error) {
-//                        // 请求失败，可以在这里处理失败情况
-//                        String errorString = "Error: " + error.getMessage();
-//                        textView.setText(errorString);
-//                        error.printStackTrace();
-//                    }
-//                }) {
-//            @Override
-//            public Map<String, String> getHeaders() throws AuthFailureError {
-//                // 如果需要设置请求头，请在此方法中返回对应的键值对
-//                Map<String, String> headers = new HashMap<>();
-//                headers.put("Content-Type", "application/json");
-//                return headers;
-//            }
-//        };
-//
-//        requestQueue.add(jsonObjectRequest);
-
     }
+
 }
