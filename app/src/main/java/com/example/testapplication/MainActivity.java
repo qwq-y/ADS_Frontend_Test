@@ -2,11 +2,14 @@ package com.example.testapplication;
 
 import android.content.Intent;
 import android.content.SyncRequest;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -25,6 +28,8 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -37,31 +42,33 @@ import okhttp3.Callback;
 import okhttp3.FormBody;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Button sendButton;
-    TextView textView;
-
-//    private String targetUrl = "http://10.25.6.55:80/users/login";
+    private TextView textView;
+    private ImageView imageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textView = findViewById(R.id.text);
+        textView = findViewById(R.id.textView);
 
-        sendButton = findViewById(R.id.btn_send);
+        imageView = findViewById((R.id.imageView));
+
+        sendButton = findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View view) {
-        if (view.getId() == R.id.btn_send) {
-            textView.setText("sending hello...");
+        if (view.getId() == R.id.sendButton) {
+            textView.setText("sending ...");
             try {
                 new Thread(new Runnable() {
                     @Override
@@ -70,7 +77,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             // 处理按钮点击事件
 //                            okhttpGet("http://10.25.6.55:80/posts");
 //                            testLogin();
-                            testSignup();
+//                            testSignup();
+                            testSam();
 
                         } catch (Exception e) {
                             runOnUiThread(new Runnable() {
@@ -92,16 +100,85 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Map<String, String> params = new HashMap<>();
         params.put("studentId", "12121212");
         params.put("password", "12121212");
-        okhttpGet("http://10.25.6.55:80/users/login", params);
+
+        String url = "http://10.25.6.55:80/users/login";
+
+        okhttpGet(url, params);
     }
 
     private void testSignup() {
         Map<String, String> params = new HashMap<>();
-        params.put("studentId", "12345671");
-        params.put("name", "hihi");
+        params.put("studentId", "12345673");
+        params.put("name", "hiii");
         params.put("password", "password123");
         params.put("type", "user");
-        okhttpPost("http://10.25.6.55:80/users", params);
+
+        String url = "http://10.25.6.55:80/users";
+
+        okhttpPost(url, params, null);
+    }
+
+    private void testSam() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                imageView.setImageResource(R.drawable.test_image);
+            }
+        });
+
+//        File imageFile = new File("test_image.png");
+        File imageFile = getFileFromResource(R.drawable.test_image);
+
+        Map<String, String> params = new HashMap<>();
+        params.put("point_coord_0", "200");
+        params.put("point_coord_1", "100");
+        params.put("point_label", "1");
+        params.put("use_mask", "0");
+        params.put("mode", "0");
+
+        String url = "http://172.18.36.107:5000/sam";
+
+        okhttpPost(url, params, imageFile);
+    }
+
+    private void saveBitmapToFile(Bitmap bitmap) {
+        try {
+            // 获取应用的私有存储目录
+            File directory = getFilesDir();
+
+            // 创建保存文件的目标路径
+            File file = new File(directory, "received_image.jpg");
+
+            // 创建文件输出流
+            FileOutputStream outputStream = new FileOutputStream(file);
+
+            // 将Bitmap写入输出流，并指定压缩格式和质量
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+
+            // 刷新输出流
+            outputStream.flush();
+
+            // 关闭输出流
+            outputStream.close();
+
+            Log.i("ww", "Bitmap saved to: " + file.getAbsolutePath());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private File getFileFromResource(int resId) {
+        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), resId);
+        File tempFile = new File(getCacheDir(), "temp_image.jpg");
+        try {
+            FileOutputStream outputStream = new FileOutputStream(tempFile);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+            outputStream.flush();
+            outputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return tempFile;
     }
 
     private void okhttpGet(String url) throws IOException {
@@ -116,7 +193,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    textView.setText(responseBody);
+                    textView.setText("收到回复：" +responseBody);
                 }
             });
         }
@@ -142,7 +219,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        textView.setText(responseBody);
+                        textView.setText("收到回复：" +responseBody);
                     }
                 });
             }
@@ -181,7 +258,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        textView.setText(responseBody);
+                        textView.setText("收到回复：" + responseBody);
                     }
                 });
             }
@@ -199,4 +276,70 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
     }
 
+    private void okhttpPost(String url, Map<String, String> params, File imageFile) {
+        OkHttpClient client = new OkHttpClient();
+
+        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM);
+
+        // 添加文本参数
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
+        }
+
+        // 添加图片文件
+        if (imageFile != null) {
+            multipartBuilder.addFormDataPart("image", imageFile.getName(),
+                    RequestBody.create(MediaType.parse("image/*"), imageFile));
+        }
+
+        RequestBody requestBody = multipartBuilder.build();
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .post(requestBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, okhttp3.Response response) throws IOException {
+                // 处理响应
+                byte[] responseBodyBytes = response.body().bytes();
+                final Bitmap bitmap = BitmapFactory.decodeByteArray(responseBodyBytes, 0, responseBodyBytes.length);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        textView.setText("Success!");
+                        imageView.setImageBitmap(bitmap);
+                    }
+                });
+//                new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        saveBitmapToFile(bitmap);
+//                    }
+//                }).start();
+                // 删除临时文件
+                if (imageFile != null && imageFile.exists()) {
+                    imageFile.delete();
+                }
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // 处理失败
+                e.printStackTrace();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        textView.setText("Error: " + e.getMessage());
+                    }
+                });
+                // 删除临时文件
+                if (imageFile != null && imageFile.exists()) {
+                    imageFile.delete();
+                }
+            }
+        });
+    }
 }
