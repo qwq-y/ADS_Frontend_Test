@@ -62,10 +62,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import okio.BufferedSource;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private String TAG = "ww";
+    private String TEMP = "temp";
     private Button sendButton;
     private TextView textView;
     private ImageView imageView;
@@ -96,19 +98,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                            testLogin();
 //                            testSignup();
                             testSam();
-
+//                            testReceivePicture();
                         } catch (Exception e) {
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    textView.setText(e.getMessage());
-                                }
-                            });
+                            Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
                     }
                 }).start();
             } catch (Exception e) {
-                textView.setText(e.getMessage());
+                Log.d(TAG, "exception in click: " + e.getMessage());
             }
         }
     }
@@ -132,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         String url = "http://10.25.6.55:80/users";
 
-//        okhttpPost(url, params, null, null);
+        okhttpPost(url, params, null);
     }
 
     private void testSam() {
@@ -143,25 +140,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                // TODO
-//                imageView.setImageResource(R.drawable.test_image);
-
-// -------------------------------------------------------------------------------------------------
-//                Uri uri = Uri.parse("file:///data/user/0/com.example.testapplication/files/image.jpg");
-//
-////                Glide.with(MainActivity.this)
-////                        .load(uri)
-////                        .into(imageView);
-//
-////                Picasso.get()
-////                        .load(uri)
-////                        .into(imageView);
-//
-//                imageView.setImageURI(uri);
-//
-//                textView.setText("临时文件");
-// -------------------------------------------------------------------------------------------------
-
                 imageView.setImageBitmap(bitmap);
                 textView.setText("准备发送上图");
             }
@@ -189,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
             outputStream.flush();
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.d(TAG, "exception in getting image from drawable: " + e.getMessage());
             imageFile = null;
         } finally {
             try {
@@ -197,7 +175,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     outputStream.close();
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.d(TAG, "exception in getting image from drawable (close stream)");
             }
         }
         return imageFile;
@@ -223,9 +201,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // 关闭输出流
             outputStream.close();
 
-            Log.i(TAG, "Bitmap saved to: " + file.getAbsolutePath());
+            Log.i(TAG, "bitmap saved to: " + file.getAbsolutePath());
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.d(TAG, "exception in saving bitmap to file: " + e.getMessage());
         }
     }
 
@@ -238,9 +216,53 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             outputStream.flush();
             outputStream.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.d(TAG, "exception in getting file from resource: " + e.getMessage());
         }
         return tempFile;
+    }
+
+    private File convertResponseBodyToImage(ResponseBody responseBody, String filePath) throws IOException {
+        InputStream inputStream = null;
+        FileOutputStream outputStream = null;
+        File imageFile = null;
+
+        try {
+            inputStream = responseBody.byteStream();
+            outputStream = new FileOutputStream(filePath);
+
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            long totalBytesRead = 0;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+                totalBytesRead += bytesRead;
+                Log.d(TEMP, String.valueOf(totalBytesRead));
+            }
+            imageFile = new File(filePath);
+            Log.d(TAG, "成功保存图片到：" + filePath);
+
+        } catch (Exception e) {
+            Log.d(TAG, "exception in saving image: \n" + e.getMessage());
+        } finally {
+            if (inputStream != null) {
+                inputStream.close();
+            }
+            if (outputStream != null) {
+                outputStream.close();
+            }
+            responseBody.close();
+        }
+
+        return imageFile;
+    }
+
+    private void setTextView(String text) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                textView.setText(text);
+            }
+        });
     }
 
     private void okhttpGet(String url) throws IOException {
@@ -252,12 +274,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         try (okhttp3.Response response = client.newCall(request).execute()) {
             final String responseBody = response.body().string();
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    textView.setText("收到回复：" + responseBody);
-                }
-            });
+            setTextView("收到回复：" + responseBody);
         }
     }
 
@@ -278,23 +295,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void onResponse(okhttp3.Call call, okhttp3.Response response) throws IOException {
                 // 处理响应
                 String responseBody = response.body().string();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        textView.setText("收到回复：" + responseBody);
-                    }
-                });
+                setTextView("收到回复：" + responseBody);
             }
 
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        textView.setText("Error: " + e.getMessage());
-                    }
-                });
+                setTextView("Error: " + e.getMessage());
             }
         });
     }
@@ -318,23 +325,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void onResponse(Call call, okhttp3.Response response) throws IOException {
                 // 处理响应
                 String responseBody = response.body().string();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        textView.setText("收到回复：" + responseBody);
-                    }
-                });
+                setTextView("收到回复：" + responseBody);
             }
 
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        textView.setText("Error: " + e.getMessage());
-                    }
-                });
+                setTextView("Error: " + e.getMessage());
             }
         });
     }
@@ -349,7 +346,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         for (Map.Entry<String, String> entry : params.entrySet()) {
             multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
         }
-
         // 添加图片文件
         if (imageFile != null) {
             multipartBuilder.addFormDataPart("image", imageFile.getName(),
@@ -357,7 +353,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         RequestBody requestBody = multipartBuilder.build();
-
         okhttp3.Request request = new okhttp3.Request.Builder()
                 .url(url)
                 .post(requestBody)
@@ -366,111 +361,68 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onResponse(Call call, okhttp3.Response response) throws IOException {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        textView.setText("收到回复！");
-                    }
-                });
+                setTextView("收到回复！");
                 try {
-                    Log.d(TAG, "0");
                     ResponseBody responseBody = response.body();
-                    byte[] responseBodyBytes = responseBody.bytes();
-                    Log.d(TAG, "1");
-                    // TODO
-// -------------------------------------------------------------------------------------------------
-                    // 转码
-//                    YuvImage yuvimage = new YuvImage(responseBodyBytes, ImageFormat.NV21, 20, 20, null);//20、20分别是图的宽度与高度
-//                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//                    yuvimage.compressToJpeg(new Rect(0, 0, 20, 20), 80, baos);//80--JPG图片的质量[0-100],100最高
-//                    byte[] jdata = baos.toByteArray();
 
-                    Bitmap bitmapNew = BitmapFactory.decodeByteArray(responseBodyBytes, 0, responseBodyBytes.length);
-
-                    // 将图片保存到本地
-//                    File externalDir = Environment.getExternalStorageDirectory();
-//                    File imageFile = new File(externalDir, "response_image.jpg");
-//                    FileOutputStream outputStream = new FileOutputStream(imageFile);
-//                    outputStream.write(responseBodyBytes);
-//                    outputStream.close();
-
-                    // 将图片保存到内部存储中的文件
-//                    FileOutputStream outputStream;
-//                    try {
-//                        File file = new File(getFilesDir(), "image.jpg");
-//                        outputStream = openFileOutput(file.getName(), Context.MODE_PRIVATE);
-//                        outputStream.write(responseBodyBytes);
-//                        outputStream.close();
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
-// -------------------------------------------------------------------------------------------------
-
-                    Log.d(TAG, "2");
+                    String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
+                    File imageFile = convertResponseBodyToImage(responseBody, filePath);
+                    Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            Log.d(TAG, "3");
-                            // TODO
-// -------------------------------------------------------------------------------------------------
-                            // 从本地文件加载图片
-//                            Uri imageUri = Uri.fromFile(imageFile);
-//                            Log.d(TAG, "Uri: \n" + imageUri.toString());
-//                            imageView.setImageURI(imageUri);
-
-                            // 从内部存储加载图片
-//                            File file = new File(getFilesDir(), "image.jpg");
-//                            Uri imageUri = Uri.fromFile(file);
-//                            Log.d(TAG, "Uri: \n" + imageUri.toString());
-//                            imageView.setImageURI(imageUri);
-
-                            // Picasso
-//                            Picasso.get()
-//                                    .load(responseBodyBytes)
-//                                    .into(imageView);
-
-                            // Glide
-//                            Glide.with(MainActivity.this)
-//                                    .asBitmap()
-//                                    .load(responseBodyBytes)
-//                                    .into(imageView);
-
-                            // Drawable
-//                            InputStream inputStream = new ByteArrayInputStream(responseBodyBytes);
-//                            Drawable drawable = Drawable.createFromStream(inputStream, null);
-//                            imageView.setImageDrawable(drawable);
-
-                            // 安卓原生
-                            imageView.setImageBitmap(bitmapNew);
-// -------------------------------------------------------------------------------------------------
-
-                            Log.d(TAG, "4");
+                            imageView.setImageBitmap(bitmap);
+                            textView.setText("获取到上图");
                         }
                     });
-                    Log.d(TAG, "5");
-                    // 删除临时文件
-//                    if (imageFile != null && imageFile.exists()) {
-//                        imageFile.delete();
-//                    }
+
                 } catch (Exception e) {
-                    Log.d(TAG, "exception here: \n" + e.getMessage());
+                    Log.d(TAG, "exception in handling response: \n" + e.getMessage());
                 }
             }
-
             @Override
             public void onFailure(Call call, IOException e) {
-                // 处理失败
-                e.printStackTrace();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        textView.setText("Error: \n" + e.getMessage());
-                    }
-                });
+                setTextView("Error: \n" + e.getMessage());
                 // 删除临时文件
 //                if (imageFile != null && imageFile.exists()) {
 //                    imageFile.delete();
 //                }
+            }
+        });
+    }
+
+    private void testReceivePicture() {
+        String url = "https://github.com/qwq-y/ChatRoom/blob/main/imgs/register.png?raw=true";
+        OkHttpClient client = new OkHttpClient();
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, okhttp3.Response response) throws IOException {
+                setTextView("收到回复！");
+                try {
+                    ResponseBody responseBody = response.body();
+                    if (responseBody != null) {
+                        String filePath = MainActivity.this.getFilesDir() + "image.jpg";
+                        File imageFile = convertResponseBodyToImage(responseBody, filePath);
+                        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                imageView.setImageBitmap(bitmap);
+                                textView.setText("获取到上图");
+                            }
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.d(TAG, "exception in handling response: \n" + e.getMessage());
+                }
+            }
+            @Override
+            public void onFailure(Call call, IOException e) {
+                setTextView("Error: \n" + e.getMessage());
             }
         });
     }
