@@ -32,6 +32,7 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
+import com.example.testapplication.models.CustomResponse;
 import com.squareup.picasso.Picasso;
 
 import org.json.JSONException;
@@ -46,11 +47,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.CacheRequest;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -97,8 +100,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                            okhttpGet("http://10.25.6.55:80/posts");
 //                            testLogin();
 //                            testSignup();
-                            testSam();
+//                            testSam();
 //                            testReceivePicture();
+                            testFinalInterface();
                         } catch (Exception e) {
                             Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
@@ -129,7 +133,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         String url = "http://10.25.6.55:80/users";
 
-        okhttpPost(url, params, null);
+        okhttpPost(url, params);
     }
 
     private void testSam() {
@@ -156,6 +160,91 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         okhttpPost(url, params, imageFile);
 
+    }
+
+    private void testFinalInterface() {
+        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
+
+        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                imageView.setImageBitmap(bitmap);
+                textView.setText("准备发送上图");
+            }
+        });
+
+        Map<String, String> params = new HashMap<>();
+        params.put("point_coord_0", "200");
+        params.put("point_coord_1", "100");
+        params.put("point_label", "1");
+        params.put("use_mask", "0");
+        params.put("mode", "0");
+
+        String url = "http://172.18.36.107:5000/sam";
+        boolean isImage = true;
+        boolean isText = false;
+
+        okhttpPost(url, params, imageFile, isImage, isText)
+                .thenAccept(customResponse -> {
+                    // 在这里处理修改后的customResponse
+                    String text = customResponse.getText();
+                    Bitmap image = customResponse.getImage();
+                    if (text != null) {
+                        setTextView(text);
+                    }
+                    if (image != null) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                imageView.setImageBitmap(image);
+                                textView.setText("获取到上图");
+                            }
+                        });
+                    }
+                })
+                .exceptionally(e -> {
+                    // 处理异常
+                    Log.d(TAG, "exception in interface: " + e.getMessage());
+                    return null;
+                });
+
+    }
+
+    private void testReceivePicture() {
+        String url = "https://github.com/qwq-y/ChatRoom/blob/main/imgs/register.png?raw=true";
+        OkHttpClient client = new OkHttpClient();
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, okhttp3.Response response) throws IOException {
+                setTextView("收到回复！");
+                try {
+                    ResponseBody responseBody = response.body();
+                    if (responseBody != null) {
+                        String filePath = MainActivity.this.getFilesDir() + "image.jpg";
+                        File imageFile = convertResponseBodyToImage(responseBody, filePath);
+                        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                imageView.setImageBitmap(bitmap);
+                                textView.setText("获取到上图");
+                            }
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.d(TAG, "exception in handling response: \n" + e.getMessage());
+                }
+            }
+            @Override
+            public void onFailure(Call call, IOException e) {
+                setTextView("Error: \n" + e.getMessage());
+            }
+        });
     }
 
     private File getImageFileFromDrawable(Context context, int resId) {
@@ -383,47 +472,70 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onFailure(Call call, IOException e) {
                 setTextView("Error: \n" + e.getMessage());
-                // 删除临时文件
-//                if (imageFile != null && imageFile.exists()) {
-//                    imageFile.delete();
-//                }
             }
         });
     }
 
-    private void testReceivePicture() {
-        String url = "https://github.com/qwq-y/ChatRoom/blob/main/imgs/register.png?raw=true";
+
+    private CompletableFuture<CustomResponse> okhttpPost(String url, Map<String, String> params, File imageFile, Boolean isImage, Boolean isText) {
         OkHttpClient client = new OkHttpClient();
+
+        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM);
+
+        // 添加文本参数
+        if (params != null) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
+            }
+        }
+
+        // 添加图片文件
+        if (imageFile != null) {
+            multipartBuilder.addFormDataPart("image", imageFile.getName(),
+                    RequestBody.create(MediaType.parse("image/*"), imageFile));
+        }
+
+        RequestBody requestBody = multipartBuilder.build();
         okhttp3.Request request = new okhttp3.Request.Builder()
                 .url(url)
+                .post(requestBody)
                 .build();
+
+        CompletableFuture<CustomResponse> future = new CompletableFuture<>();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onResponse(Call call, okhttp3.Response response) throws IOException {
-                setTextView("收到回复！");
                 try {
+                    CustomResponse customResponse = new CustomResponse();
                     ResponseBody responseBody = response.body();
-                    if (responseBody != null) {
-                        String filePath = MainActivity.this.getFilesDir() + "image.jpg";
+
+                    if (isImage && !isText) {
+                        String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
                         File imageFile = convertResponseBodyToImage(responseBody, filePath);
                         Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(bitmap);
-                                textView.setText("获取到上图");
-                            }
-                        });
+                        customResponse.setImage(bitmap);
+                    } else if (!isImage && isText) {
+                        String responseString = responseBody.string();
+                        customResponse.setText(responseString);
+                    } else if (isImage && isText) {
+                        // TODO: 处理返回体既需要图片又需要文本的情况
                     }
+
+                    future.complete(customResponse);
                 } catch (Exception e) {
-                    Log.d(TAG, "exception in handling response: \n" + e.getMessage());
+                    future.completeExceptionally(e);
                 }
             }
+
             @Override
             public void onFailure(Call call, IOException e) {
-                setTextView("Error: \n" + e.getMessage());
+                future.completeExceptionally(e);
             }
         });
+
+        return future;
     }
+
 }
