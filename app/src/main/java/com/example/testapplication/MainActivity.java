@@ -21,6 +21,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.VideoView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -43,6 +44,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,6 +56,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -77,6 +81,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView textView;
     private ImageView imageView;
 
+    private VideoView videoView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,6 +91,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         textView = findViewById(R.id.textView);
 
         imageView = findViewById((R.id.imageView));
+
+        videoView = findViewById(R.id.videoView);
 
         sendButton = findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
@@ -104,8 +112,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                            testSignup();
 //                            testSam();
 //                            testReceivePicture();
-                            testPostImageInterface();
+//                            testPostImageInterface();
 //                            testPostTextInterface();
+                            testReceiveVideo();
                         } catch (Exception e) {
                             Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
@@ -193,11 +202,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     // 在这里处理修改后的customResponse
                     String text = customResponse.getText();
                     File image = customResponse.getImage();
-                    Bitmap bitmapNew = BitmapFactory.decodeFile(image.getAbsolutePath());
+
                     if (text != null) {
                         setTextView(text);
                     }
+
                     if (image != null) {
+                        Bitmap bitmapNew = BitmapFactory.decodeFile(image.getAbsolutePath());
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -250,13 +261,42 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 });
     }
 
+    private void testReceiveVideo() {
+        String url = "https://media.w3.org/2010/05/sintel/trailer.mp4";
+        OkHttpClient client = new OkHttpClient();
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .build();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    ResponseBody responseBody = response.body();
+                    String filePath = MainActivity.this.getFilesDir() + File.separator + "video.mp4";
+                    File videoFile = convertResponseBodyToVideo(responseBody, filePath);
+                    runOnUiThread(() -> {
+                        textView.setText("loading");
+                        VideoView videoView = findViewById(R.id.videoView);
+                        videoView.setVideoPath(videoFile.getAbsolutePath());
+                        videoView.start();
+                    });
+                } catch (Exception e) {
+                    Log.d(TAG, "exception in handling response: \n" + e.getMessage());
+                }
+            }
+            @Override
+            public void onFailure(Call call, IOException e) {
+                setTextView("Error: \n" + e.getMessage());
+            }
+        });
+    }
+
     private void testReceivePicture() {
         String url = "https://github.com/qwq-y/ChatRoom/blob/main/imgs/register.png?raw=true";
         OkHttpClient client = new OkHttpClient();
         okhttp3.Request request = new okhttp3.Request.Builder()
                 .url(url)
                 .build();
-
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onResponse(Call call, okhttp3.Response response) throws IOException {
@@ -390,6 +430,44 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         bufferedSink.writeAll(responseBody.source());
         bufferedSink.close();
         return file;
+    }
+
+    private File convertResponseBodyToFile(ResponseBody responseBody, String filePath) throws IOException {
+        File file = new File(filePath);
+        BufferedSink bufferedSink = Okio.buffer(Okio.sink(file));
+        bufferedSink.writeAll(responseBody.source());
+        bufferedSink.close();
+        return file;
+    }
+
+    private void unzipImages(File zipFile) throws IOException {
+        ZipInputStream zipInputStream = new ZipInputStream(new FileInputStream(zipFile));
+        ZipEntry entry;
+        while ((entry = zipInputStream.getNextEntry()) != null) {
+            if (!entry.isDirectory() && isImageFile(entry.getName())) {
+                String fileName = entry.getName();
+                String extractedFilePath = MainActivity.this.getFilesDir() + File.separator + fileName;
+                File extractedFile = new File(extractedFilePath);
+                FileOutputStream fos = new FileOutputStream(extractedFile);
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = zipInputStream.read(buffer)) > 0) {
+                    fos.write(buffer, 0, length);
+                }
+                fos.close();
+
+                runOnUiThread(() -> {
+                     imageView.setImageURI(Uri.fromFile(extractedFile));
+                });
+            }
+            zipInputStream.closeEntry();
+        }
+        zipInputStream.close();
+    }
+
+    private boolean isImageFile(String fileName) {
+        String extension = fileName.substring(fileName.lastIndexOf(".") + 1);
+        return extension.equalsIgnoreCase("jpg") || extension.equalsIgnoreCase("jpeg") || extension.equalsIgnoreCase("png");
     }
 
     private void setTextView(String text) {
@@ -644,6 +722,87 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     } else if (isImage && isText && isVideo) {
                         // TODO: 处理返回体既需要图片又需要文本又需要视频的情况
                     }
+
+                    future.complete(customResponse);
+                } catch (Exception e) {
+                    future.completeExceptionally(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                future.completeExceptionally(e);
+            }
+        });
+
+        return future;
+    }
+
+    private CompletableFuture<CustomResponse> okhttpPost(String url, Map<String, String> params, File imageFile,  File videoFile, Boolean isImage, Boolean isText, Boolean isVideo, Boolean isMultipleImage) {
+        OkHttpClient client = new OkHttpClient();
+
+        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM);
+
+        // 添加文本参数
+        if (params != null) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
+            }
+        }
+
+        // 添加图片文件
+        if (imageFile != null) {
+            multipartBuilder.addFormDataPart("image", imageFile.getName(),
+                    RequestBody.create(MediaType.parse("image/*"), imageFile));
+        }
+
+        // 添加视频文件
+        if (videoFile != null) {
+            multipartBuilder.addFormDataPart("video", videoFile.getName(),
+                    RequestBody.create(MediaType.parse("video/*"), videoFile));
+        }
+
+        RequestBody requestBody = multipartBuilder.build();
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .post(requestBody)
+                .build();
+
+        CompletableFuture<CustomResponse> future = new CompletableFuture<>();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, okhttp3.Response response) throws IOException {
+                try {
+                    CustomResponse customResponse = new CustomResponse();
+                    ResponseBody responseBody = response.body();
+
+                    if (isMultipleImage) {
+                        String filePath = MainActivity.this.getFilesDir() + File.separator + "images.zip";
+                        File zipFile = convertResponseBodyToFile(responseBody, filePath);
+                        customResponse.setZipImage(zipFile);
+                    }
+//                    if (isImage && !isText && !isVideo) {
+//                        String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
+//                        File imageFile = convertResponseBodyToImage(responseBody, filePath);
+//                        customResponse.setImage(imageFile);
+//                    } else if (!isImage && isText && !isVideo) {
+//                        String responseString = responseBody.string();
+//                        customResponse.setText(responseString);
+//                    } else if (!isImage && !isText && isVideo) {
+//                        String filePath = MainActivity.this.getFilesDir() + File.separator + "video.mp4";
+//                        File videoFile = convertResponseBodyToVideo(responseBody, filePath);
+//                        customResponse.setVideo(videoFile);
+//                    } else if (isImage && isText && !isVideo) {
+//                        // TODO: 处理返回体既需要图片又需要文本的情况
+//                    } else if (isImage && !isText && isVideo) {
+//                        // TODO: 处理返回体既需要图片又需要视频的情况
+//                    } else if (!isImage && isText && isVideo) {
+//                        // TODO: 处理返回体既需要文本又需要视频的情况
+//                    } else if (isImage && isText && isVideo) {
+//                        // TODO: 处理返回体既需要图片又需要文本又需要视频的情况
+//                    }
 
                     future.complete(customResponse);
                 } catch (Exception e) {

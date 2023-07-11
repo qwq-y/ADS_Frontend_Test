@@ -12,6 +12,8 @@ public class CustomResponse {
 
     private File video;
 
+    private File zipImage;
+
     public CustomResponse() {
     }
 
@@ -27,6 +29,10 @@ public class CustomResponse {
         return video;
     }
 
+    public File getZipImage() {
+        return zipImage;
+    }
+
     public void setText(String text) {
         this.text = text;
     }
@@ -37,6 +43,10 @@ public class CustomResponse {
 
     public void setVideo(File video) {
         this.video = video;
+    }
+
+    public void setZipImage(File zipImage) {
+        this.zipImage = zipImage;
     }
 
     @Override
