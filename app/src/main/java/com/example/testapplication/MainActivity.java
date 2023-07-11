@@ -65,7 +65,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import okio.BufferedSink;
 import okio.BufferedSource;
+import okio.Okio;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -102,7 +104,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                            testSignup();
 //                            testSam();
 //                            testReceivePicture();
-                            testFinalInterface();
+                            testPostImageInterface();
+//                            testPostTextInterface();
                         } catch (Exception e) {
                             Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
@@ -126,8 +129,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void testSignup() {
         Map<String, String> params = new HashMap<>();
-        params.put("studentId", "12345673");
-        params.put("name", "hiii");
+        params.put("studentId", "12345674");
+        params.put("name", "hiiii");
         params.put("password", "password123");
         params.put("type", "user");
 
@@ -162,7 +165,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    private void testFinalInterface() {
+    private void testPostImageInterface() {
         File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
 
         Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
@@ -189,7 +192,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .thenAccept(customResponse -> {
                     // 在这里处理修改后的customResponse
                     String text = customResponse.getText();
-                    Bitmap image = customResponse.getImage();
+                    File image = customResponse.getImage();
+                    Bitmap bitmapNew = BitmapFactory.decodeFile(image.getAbsolutePath());
                     if (text != null) {
                         setTextView(text);
                     }
@@ -197,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                imageView.setImageBitmap(image);
+                                imageView.setImageBitmap(bitmapNew);
                                 textView.setText("获取到上图");
                             }
                         });
@@ -209,6 +213,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     return null;
                 });
 
+    }
+
+    private void testPostTextInterface() {
+        Map<String, String> params = new HashMap<>();
+        params.put("studentId", "12345673");
+        params.put("name", "hiii");
+        params.put("password", "password123");
+        params.put("type", "user");
+
+        String url = "http://10.25.6.55:80/users";
+
+        okhttpPost(url, params, null, false, true)
+                .thenAccept(customResponse -> {
+                    // 在这里处理修改后的customResponse
+                    String text = customResponse.getText();
+                    File image = customResponse.getImage();
+                    Bitmap bitmap = BitmapFactory.decodeFile(image.getAbsolutePath());
+                    if (text != null) {
+                        setTextView(text);
+                    }
+                    if (image != null) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                imageView.setImageBitmap(bitmap);
+                                textView.setText("获取到上图");
+                            }
+                        });
+                    }
+                })
+                .exceptionally(e -> {
+                    // 处理异常
+                    Log.d(TAG, "exception in interface: " + e.getMessage());
+                    return null;
+                });
     }
 
     private void testReceivePicture() {
@@ -345,6 +384,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return imageFile;
     }
 
+    private File convertResponseBodyToVideo(ResponseBody responseBody, String filePath) throws IOException {
+        File file = new File(filePath);
+        BufferedSink bufferedSink = Okio.buffer(Okio.sink(file));
+        bufferedSink.writeAll(responseBody.source());
+        bufferedSink.close();
+        return file;
+    }
+
     private void setTextView(String text) {
         runOnUiThread(new Runnable() {
             @Override
@@ -476,7 +523,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
     }
 
-
     private CompletableFuture<CustomResponse> okhttpPost(String url, Map<String, String> params, File imageFile, Boolean isImage, Boolean isText) {
         OkHttpClient client = new OkHttpClient();
 
@@ -514,13 +560,89 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     if (isImage && !isText) {
                         String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
                         File imageFile = convertResponseBodyToImage(responseBody, filePath);
-                        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-                        customResponse.setImage(bitmap);
+//                        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+                        customResponse.setImage(imageFile);
                     } else if (!isImage && isText) {
                         String responseString = responseBody.string();
                         customResponse.setText(responseString);
                     } else if (isImage && isText) {
                         // TODO: 处理返回体既需要图片又需要文本的情况
+                    }
+
+                    future.complete(customResponse);
+                } catch (Exception e) {
+                    future.completeExceptionally(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                future.completeExceptionally(e);
+            }
+        });
+
+        return future;
+    }
+
+    private CompletableFuture<CustomResponse> okhttpPost(String url, Map<String, String> params, File imageFile,  File videoFile, Boolean isImage, Boolean isText, Boolean isVideo) {
+        OkHttpClient client = new OkHttpClient();
+
+        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM);
+
+        // 添加文本参数
+        if (params != null) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
+            }
+        }
+
+        // 添加图片文件
+        if (imageFile != null) {
+            multipartBuilder.addFormDataPart("image", imageFile.getName(),
+                    RequestBody.create(MediaType.parse("image/*"), imageFile));
+        }
+
+        // 添加视频文件
+        if (videoFile != null) {
+            multipartBuilder.addFormDataPart("video", videoFile.getName(),
+                    RequestBody.create(MediaType.parse("video/*"), videoFile));
+        }
+
+        RequestBody requestBody = multipartBuilder.build();
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .post(requestBody)
+                .build();
+
+        CompletableFuture<CustomResponse> future = new CompletableFuture<>();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, okhttp3.Response response) throws IOException {
+                try {
+                    CustomResponse customResponse = new CustomResponse();
+                    ResponseBody responseBody = response.body();
+
+                    if (isImage && !isText && !isVideo) {
+                        String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
+                        File imageFile = convertResponseBodyToImage(responseBody, filePath);
+                        customResponse.setImage(imageFile);
+                    } else if (!isImage && isText && !isVideo) {
+                        String responseString = responseBody.string();
+                        customResponse.setText(responseString);
+                    } else if (!isImage && !isText && isVideo) {
+                        String filePath = MainActivity.this.getFilesDir() + File.separator + "video.mp4";
+                        File videoFile = convertResponseBodyToVideo(responseBody, filePath);
+                        customResponse.setVideo(videoFile);
+                    } else if (isImage && isText && !isVideo) {
+                        // TODO: 处理返回体既需要图片又需要文本的情况
+                    } else if (isImage && !isText && isVideo) {
+                        // TODO: 处理返回体既需要图片又需要视频的情况
+                    } else if (!isImage && isText && isVideo) {
+                        // TODO: 处理返回体既需要文本又需要视频的情况
+                    } else if (isImage && isText && isVideo) {
+                        // TODO: 处理返回体既需要图片又需要文本又需要视频的情况
                     }
 
                     future.complete(customResponse);

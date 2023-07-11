@@ -2,41 +2,41 @@ package com.example.testapplication.models;
 
 import android.graphics.Bitmap;
 
+import java.io.File;
+
 public class CustomResponse {
 
     private String text;
-    private Bitmap image;
+
+    private File image;
+
+    private File video;
 
     public CustomResponse() {
-    }
-
-    public CustomResponse(String text) {
-        this.text = text;
-    }
-
-    public CustomResponse(Bitmap image) {
-        this.image = image;
-    }
-
-    public CustomResponse(String text, Bitmap image) {
-        this.text = text;
-        this.image = image;
     }
 
     public String getText() {
         return text;
     }
 
+    public File getImage() {
+        return image;
+    }
+
+    public File getVideo() {
+        return video;
+    }
+
     public void setText(String text) {
         this.text = text;
     }
 
-    public Bitmap getImage() {
-        return image;
+    public void setImage(File image) {
+        this.image = image;
     }
 
-    public void setImage(Bitmap image) {
-        this.image = image;
+    public void setVideo(File video) {
+        this.video = video;
     }
 
     @Override
@@ -44,6 +44,9 @@ public class CustomResponse {
         return "CustomResponse{" +
                 "text='" + text + '\'' +
                 ", image=" + image +
+                ", video=" + video +
                 '}';
     }
 }
+
+
