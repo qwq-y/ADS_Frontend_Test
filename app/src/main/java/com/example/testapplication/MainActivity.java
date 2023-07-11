@@ -49,6 +49,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.CacheRequest;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -114,7 +115,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                            testReceivePicture();
 //                            testPostImageInterface();
 //                            testPostTextInterface();
-                            testReceiveVideo();
+//                            testReceiveVideo();
+                            testVideo();
                         } catch (Exception e) {
                             Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
@@ -172,6 +174,67 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         okhttpPost(url, params, imageFile);
 
+    }
+
+    private void testVideo() {
+
+        File videoFile = getVideoFileFromRaw(MainActivity.this, R.raw.test_video);
+
+        Map<String, String> params = new HashMap<>();
+        params.put("point_coord_0", "200");
+        params.put("point_coord_1", "100");
+        params.put("point_label", "1");
+        params.put("use_mask", "0");
+        params.put("mode", "0");
+
+        String url = "http://172.18.36.107:1200/video";
+
+        okhttpPost(url, params, null, videoFile, false, false, true)
+                .thenAccept(customResponse -> {
+                    // 在这里处理修改后的customResponse
+                    String text = customResponse.getText();
+                    File image = customResponse.getImage();
+                    File video = customResponse.getVideo();
+
+                    if (video != null) {
+                        runOnUiThread(() -> {
+                            VideoView videoView = findViewById(R.id.videoView);
+                            videoView.setVideoPath(video.getAbsolutePath());
+                            videoView.start();
+                        });
+                    }
+                })
+                .exceptionally(e -> {
+                    // 处理异常
+                    Log.d(TAG, "exception in interface: " + e.getMessage());
+                    return null;
+                });
+
+    }
+
+    public static File getVideoFileFromRaw(Context context, int resourceId) {
+        File videoFile = new File(context.getFilesDir(), "test_video.mp4");
+
+        try {
+            InputStream inputStream = context.getResources().openRawResource(resourceId);
+            OutputStream outputStream = new FileOutputStream(videoFile);
+            byte[] buffer = new byte[1024];
+            int length;
+
+            while ((length = inputStream.read(buffer)) > 0) {
+                outputStream.write(buffer, 0, length);
+            }
+
+            outputStream.flush();
+            outputStream.close();
+            inputStream.close();
+
+            return videoFile;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     private void testPostImageInterface() {
