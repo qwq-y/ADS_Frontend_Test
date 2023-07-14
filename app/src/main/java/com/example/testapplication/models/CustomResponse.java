@@ -3,6 +3,7 @@ package com.example.testapplication.models;
 import android.graphics.Bitmap;
 
 import java.io.File;
+import java.util.List;
 
 public class CustomResponse {
 
@@ -13,6 +14,8 @@ public class CustomResponse {
     private File video;
 
     private File zipImage;
+
+    private List<String> encodedImages;
 
     public CustomResponse() {
     }
@@ -33,6 +36,10 @@ public class CustomResponse {
         return zipImage;
     }
 
+    public List<String> getEncodedImages() {
+        return encodedImages;
+    }
+
     public void setText(String text) {
         this.text = text;
     }
@@ -49,14 +56,10 @@ public class CustomResponse {
         this.zipImage = zipImage;
     }
 
-    @Override
-    public String toString() {
-        return "CustomResponse{" +
-                "text='" + text + '\'' +
-                ", image=" + image +
-                ", video=" + video +
-                '}';
+    public void setEncodedImages(List<String> encodedImages) {
+        this.encodedImages = encodedImages;
     }
+
 }
 
 

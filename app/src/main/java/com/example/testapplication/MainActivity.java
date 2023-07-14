@@ -16,6 +16,8 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.FileUtils;
+import android.os.Handler;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -34,8 +36,10 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.example.testapplication.models.CustomResponse;
+import com.google.gson.Gson;
 import com.squareup.picasso.Picasso;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -54,7 +58,9 @@ import java.net.CacheRequest;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.zip.ZipEntry;
@@ -81,6 +87,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button sendButton;
     private TextView textView;
     private ImageView imageView;
+
+    int imageNo = 2;
 
     private VideoView videoView;
 
@@ -116,7 +124,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                            testPostImageInterface();
 //                            testPostTextInterface();
 //                            testReceiveVideo();
-                            testVideo();
+                            testReceiveJsonify();
                         } catch (Exception e) {
                             Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
@@ -133,7 +141,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         params.put("studentId", "12121212");
         params.put("password", "12121212");
 
-        String url = "http://10.25.6.55:80/users/login";
+//        String url = "http://10.25.6.55:80/users/login";
+        String url = "http://192.168.3.124:80/users/login";
 
         okhttpGet(url, params);
     }
@@ -210,6 +219,51 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     return null;
                 });
 
+    }
+
+    private void testReceiveJsonify() {
+        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
+
+        Map<String, String> params = new HashMap<>();
+        params.put("point_coord_0", "200");
+        params.put("point_coord_1", "100");
+        params.put("point_label", "1");
+        params.put("use_mask", "0");
+        params.put("mode", "0");
+
+        String url = "http://192.168.3.124:80/imagelist";
+
+        testJsonify(url, params, imageFile)
+                .thenAccept(customResponse -> {
+                    // TODO
+                    List<String> encodedImages = customResponse.getEncodedImages();
+
+                    String image = encodedImages.get(imageNo);
+                    byte[] decodedBytes = Base64.decode(image, Base64.DEFAULT);
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                    runOnUiThread(() -> {
+                        setTextView("encodedImages");
+                        imageView.setImageBitmap(bitmap);
+                    });
+
+//                    int cnt = 0;
+//                    for (String encodedImage : encodedImages) {
+//                        byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
+//                        Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+//                        runOnUiThread(() -> {
+//                            setTextView("encodedImages");
+//                            imageView.setImageBitmap(bitmap);
+//                        });
+//                        Log.d(TAG, String.valueOf(cnt));
+//                        cnt += 1;
+//                    }
+
+                })
+                .exceptionally(e -> {
+                    // 处理异常
+                    Log.d(TAG, "exception in interface: " + e.getMessage());
+                    return null;
+                });
     }
 
     public static File getVideoFileFromRaw(Context context, int resourceId) {
@@ -866,6 +920,69 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                    } else if (isImage && isText && isVideo) {
 //                        // TODO: 处理返回体既需要图片又需要文本又需要视频的情况
 //                    }
+
+                    future.complete(customResponse);
+                } catch (Exception e) {
+                    future.completeExceptionally(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                future.completeExceptionally(e);
+            }
+        });
+
+        return future;
+    }
+
+    private CompletableFuture<CustomResponse> testJsonify(String url, Map<String, String> params, File imageFile) {
+        OkHttpClient client = new OkHttpClient();
+
+        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM);
+
+        if (params != null) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
+            }
+        }
+        if (imageFile != null) {
+            multipartBuilder.addFormDataPart("image", imageFile.getName(),
+                    RequestBody.create(MediaType.parse("image/*"), imageFile));
+        }
+
+        RequestBody requestBody = multipartBuilder.build();
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .post(requestBody)
+                .build();
+
+        CompletableFuture<CustomResponse> future = new CompletableFuture<>();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, okhttp3.Response response) throws IOException {
+                try {
+                    // TODO
+                    CustomResponse customResponse = new CustomResponse();
+
+                    // 解析JSON
+                    String responseBody = response.body().string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+
+                    String status = jsonObject.getString("Status");
+
+                    JSONArray encodedImagesArray = jsonObject.getJSONArray("ImageBytes");
+                    List<String> encodedImages = new ArrayList<>();
+
+                    // 将encodedImages字段中的数据添加到列表中
+                    for (int i = 0; i < encodedImagesArray.length(); i++) {
+                        String encodedImage = encodedImagesArray.getString(i);
+                        encodedImages.add(encodedImage);
+                    }
+
+                    customResponse.setEncodedImages(encodedImages);
 
                     future.complete(customResponse);
                 } catch (Exception e) {
