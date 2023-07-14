@@ -1,6 +1,6 @@
 # ADS_Frontend_Test
 
-实现了安卓前端与后端的通信（RESTful 风格），使用 OkHttp3 发送请求和处理响应。包括多个重载的 okhttpGet 方法和 okhttpPost 方法，多个用于实例测试的方法，以及一些辅助函数。  
+实现了安卓前端与后端的通信（主要用于 ADS 和 HOP 项目），使用 OkHttp3 发送请求和处理响应。  
 项目地址：https://github.com/qwq-y/ADS_Frontend_Test
 
 ## 环境配置
@@ -13,6 +13,7 @@
 
         dependencies {
             ......
+            implementation 'com.google.code.gson:gson:2.8.8'
             implementation 'com.squareup.picasso:picasso:2.8'
             implementation 'com.github.bumptech.glide:glide:4.12.0'
             annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
@@ -45,135 +46,88 @@
 
 ## 接口使用
 
-HOP 和 ADS 项目主要使用 okhttpPost 方法，下面对该接口的使用进行介绍。
+### HOP
 
-    private CompletableFuture<CustomResponse> okhttpPost(String url, Map<String, String> params, File imageFile,  File videoFile, Boolean isImage, Boolean isText, Boolean isVideo, Boolean isMultipleImage) {}
+HOP 项目可使用 postHOP 方法，下面对该接口的使用进行介绍。
 
-### 参数
+    private CompletableFuture<CustomResponse> postHOP(String url, Map<String, String> params, File imageFile)
+
+#### 参数
 
 - String url： 后端接口地址
-- Map<String, String> params：以键值对的形式储存的多个文本参数（可以用于字符串、整形、长整型等，但均需以 String 类型传参）（若为空请传入 null）
-- File imageFile：图片文件（若为空请传入 null）
-- File videoFile：视频文件（若为空请传入 null）
-- Boolean isImage：是否需要返回单张图片
-- Boolean isText：是否需要返回文本
-- Boolean isVideo：是否需要返回视频
-- Boolean isMultipleImage：是否需要返回多图片压缩文件
+- Map<String, String> params：以键值对的形式储存的多个文本参数（可以用于字符串、整形、长整型等，但均需以 String 类型传参）
+- File imageFile：单张图片文件
 
-注：
-  - DINO v2 部分参数可设置为 (url, null, imageFile, null, false, true, false, true)
-  - MINI-GPT-4 部分参数可设置为 (url, params, imageFile, null, false, true, false, false)
-  - SAM 部分参数可设置为 (url, params, imageFile, null, true, true, false, false)
+注：params 或 imageFile 若为空请传入 null
     
-### 返回类型
+#### 返回类型
 
 返回类型为 CompletableFuture<CustomResponse> ，其中 CustomResponse 是自定义类，包括四个私有参数：
 
-        private String text;    // 文本数据
+    private String status;    // 状态码
 
-        private File image;    // 单张图片数据
+    private List<String> images;    // base64 编码的图片列表
 
-        private File video;    // 视频数据
+    List<Map<String, Object>> messages;    // 消息列表
 
-        private File zipImage;    // 多图片的压缩数据
+    private File video;    // 单个视频文件（HOP 没有用到）
 
 可以通过 Getter 和 Setter 进行获取或者修改。注意，CustomPesponse 只可以使用无参的构造函数。
 
-### 使用示例
+#### 使用示例
 
-1. 完整的调用和接收示例：
+    private void testHop() {
 
-        private void demo() {
-        
-            File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
+        // 准备图片参数
+        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
 
-            Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+        // 准备文本参数
+        Map<String, String> params = new HashMap<>();
+        params.put("point_coord_0", "200");
+        params.put("point_coord_1", "100");
+        params.put("point_label", "1");
+        params.put("use_mask", "0");
+        params.put("mode", "0");
 
-            Map<String, String> params = new HashMap<>();
-            params.put("point_coord_0", "200");
-            params.put("point_coord_1", "100");
-            params.put("point_label", "1");
-            params.put("use_mask", "0");
-            params.put("mode", "0");
+        // 后端接口地址（请替换为实际地址）
+        String url = "http://192.168.3.124:80/imagelist";
 
-            String url = "http://172.18.36.107:5000/sam";
+        // 调用 postHOP 方法，与 HOP 后端进行通信
+        postHOP(url, params, imageFile)
+                .thenAccept(customResponse -> {
+                    
+                    // 获取收到的响应信息（这里获取了图片列表和消息列表）
+                    List<String> encodedImages = customResponse.getImages();
+                    List<Map<String, Object>> messages = customResponse.getMessages();
 
-            okhttpPost(url, params, imageFile, null, true, false, false, false)
-                    .thenAccept(customResponse -> {
-                        // 在这里处理返回的 customResponse
-
-                        String text = customResponse.getText();
-                        File image = customResponse.getImage();
-
-                        if (text != null) {
-                            // 在这里处理返回的文本数据 text
-                        }
-
-                        if (image != null) {
-                            // 在这里处理返回的图片数据 image
-                            // 可以这样转化为 Bitmap 之后显示在页面
-                            Bitmap bitmapNew = BitmapFactory.decodeFile(image.getAbsolutePath());
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    imageView.setImageBitmap(bitmapNew);
-                                }
-                            });
-                        }
-                    })
-                    .exceptionally(e -> {
-                        // 处理异常
-                        Log.d(TAG, "exception in interface: " + e.getMessage());
-                        return null;
-                    });
-        }
-
-2. 对接收到的视频文件的处理
-
-        File videoFile = customResponse.getVideo();
-        runOnUiThread(() -> {
-            VideoView videoView = findViewById(R.id.videoView);
-            videoView.setVideoPath(videoFile.getAbsolutePath());
-            videoView.start();
-        });
-   
-3. 对接收到的多图压缩文件的处理
-
-        File zipFile = customResponse.getZipImage();
-        private void unzipImages(File zipFile) throws IOException {
-            ZipInputStream zipInputStream = new ZipInputStream(new FileInputStream(zipFile));
-            ZipEntry entry;
-            while ((entry = zipInputStream.getNextEntry()) != null) {
-                if (!entry.isDirectory() && isImageFile(entry.getName())) {
-                    String fileName = entry.getName();
-                    String extractedFilePath = MainActivity.this.getFilesDir() + File.separator + fileName;
-                    File extractedFile = new File(extractedFilePath);
-                    FileOutputStream fos = new FileOutputStream(extractedFile);
-                    byte[] buffer = new byte[1024];
-                    int length;
-                    while ((length = zipInputStream.read(buffer)) > 0) {
-                        fos.write(buffer, 0, length);
-                    }
-                    fos.close();
+                    // 处理收到的图片列表（这里将指定图片显示在页面中）
+                    String image = encodedImages.get(imageNo);
+                    byte[] decodedBytes = Base64.decode(image, Base64.DEFAULT);
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
                     runOnUiThread(() -> {
-                        imageView.setImageURI(Uri.fromFile(extractedFile));
+                        setTextView("image number: " + imageNo);
+                        imageView.setImageBitmap(bitmap);
                     });
-                }
-                zipInputStream.closeEntry();
-            }
-            zipInputStream.close();
-        }
-        
-## 辅助函数
 
-使用 okhttpPost 时，请将这些辅助函数也复制到项目中：
-- convertResponseBodyToImage()
-- convertResponseBodyToVideo()
-- convertResponseBodyToFile()
-    
+                    // 处理收到的消息列表（这里将消息作为日志打印）
+                    for (Map<String, Object> message : messages) {
+                        Log.d(TAG, message.toString());
+                    }
+
+                })
+                .exceptionally(e -> {
+                    // 处理异常
+                    Log.d(TAG, "exception in interface: " + e.getMessage());
+                    return null;
+                });
+    }
+
+### ADS
+
+目前只写了单独的视频收发，见 postVideo 方法和 testVideo 方法。
 
 ## 注意事项
 
 1. 网络请求需要单开线程，对 UI 界面的更改需要在主线程进行。
 2. 不能与 localhost 进行通信（如需在本机测试，可以用 Apache 进行转发代理）。
-3. 后端返回的应答需为对应格式。
+3. 后端返回的应答需为对应格式，键值名也需要保持一致。
