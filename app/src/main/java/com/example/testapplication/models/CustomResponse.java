@@ -4,62 +4,51 @@ import android.graphics.Bitmap;
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 
 public class CustomResponse {
 
-    private String text;
+    private String status;
 
-    private File image;
+    private List<String> images;
+
+    List<Map<String, Object>> messages;
 
     private File video;
 
-    private File zipImage;
+    public CustomResponse() {}
 
-    private List<String> encodedImages;
-
-    public CustomResponse() {
+    public String getStatus() {
+        return status;
     }
 
-    public String getText() {
-        return text;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
-    public File getImage() {
-        return image;
+    public List<String> getImages() {
+        return images;
+    }
+
+    public void setImages(List<String> images) {
+        this.images = images;
+    }
+
+    public List<Map<String, Object>> getMessages() {
+        return messages;
+    }
+
+    public void setMessages(List<Map<String, Object>> messages) {
+        this.messages = messages;
     }
 
     public File getVideo() {
         return video;
     }
 
-    public File getZipImage() {
-        return zipImage;
-    }
-
-    public List<String> getEncodedImages() {
-        return encodedImages;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public void setImage(File image) {
-        this.image = image;
-    }
-
     public void setVideo(File video) {
         this.video = video;
     }
-
-    public void setZipImage(File zipImage) {
-        this.zipImage = zipImage;
-    }
-
-    public void setEncodedImages(List<String> encodedImages) {
-        this.encodedImages = encodedImages;
-    }
-
 }
 
 

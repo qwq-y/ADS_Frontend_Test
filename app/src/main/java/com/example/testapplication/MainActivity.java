@@ -60,6 +60,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -83,14 +84,12 @@ import okio.Okio;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private String TAG = "ww";
-    private String TEMP = "temp";
     private Button sendButton;
     private TextView textView;
     private ImageView imageView;
-
-    int imageNo = 2;
-
     private VideoView videoView;
+
+    int imageNo = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,16 +114,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     @Override
                     public void run() {
                         try {
-                            // 处理按钮点击事件
-//                            okhttpGet("http://10.25.6.55:80/posts");
-//                            testLogin();
-//                            testSignup();
-//                            testSam();
-//                            testReceivePicture();
-//                            testPostImageInterface();
-//                            testPostTextInterface();
-//                            testReceiveVideo();
-                            testReceiveJsonify();
+                            testHop();
                         } catch (Exception e) {
                             Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
@@ -134,55 +124,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Log.d(TAG, "exception in click: " + e.getMessage());
             }
         }
-    }
-
-    private void testLogin() {
-        Map<String, String> params = new HashMap<>();
-        params.put("studentId", "12121212");
-        params.put("password", "12121212");
-
-//        String url = "http://10.25.6.55:80/users/login";
-        String url = "http://192.168.3.124:80/users/login";
-
-        okhttpGet(url, params);
-    }
-
-    private void testSignup() {
-        Map<String, String> params = new HashMap<>();
-        params.put("studentId", "12345674");
-        params.put("name", "hiiii");
-        params.put("password", "password123");
-        params.put("type", "user");
-
-        String url = "http://10.25.6.55:80/users";
-
-        okhttpPost(url, params);
-    }
-
-    private void testSam() {
-//        File imageFile = new File("app/src/main/res/drawable/test_image.png");
-        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
-
-        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                imageView.setImageBitmap(bitmap);
-                textView.setText("准备发送上图");
-            }
-        });
-
-        Map<String, String> params = new HashMap<>();
-        params.put("point_coord_0", "200");
-        params.put("point_coord_1", "100");
-        params.put("point_label", "1");
-        params.put("use_mask", "0");
-        params.put("mode", "0");
-
-        String url = "http://172.18.36.107:5000/sam";
-
-        okhttpPost(url, params, imageFile);
-
     }
 
     private void testVideo() {
@@ -198,11 +139,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         String url = "http://172.18.36.107:1200/video";
 
-        okhttpPost(url, params, null, videoFile, false, false, true)
+        postVideo(url, params, null, videoFile)
                 .thenAccept(customResponse -> {
-                    // 在这里处理修改后的customResponse
-                    String text = customResponse.getText();
-                    File image = customResponse.getImage();
                     File video = customResponse.getVideo();
 
                     if (video != null) {
@@ -221,7 +159,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    private void testReceiveJsonify() {
+    private void testHop() {
         File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
 
         Map<String, String> params = new HashMap<>();
@@ -233,30 +171,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         String url = "http://192.168.3.124:80/imagelist";
 
-        testJsonify(url, params, imageFile)
+        postHOP(url, params, imageFile)
                 .thenAccept(customResponse -> {
-                    // TODO
-                    List<String> encodedImages = customResponse.getEncodedImages();
+
+                    List<String> encodedImages = customResponse.getImages();
+                    List<Map<String, Object>> messages = customResponse.getMessages();
 
                     String image = encodedImages.get(imageNo);
                     byte[] decodedBytes = Base64.decode(image, Base64.DEFAULT);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
                     runOnUiThread(() -> {
-                        setTextView("encodedImages");
+                        setTextView("image number: " + imageNo);
                         imageView.setImageBitmap(bitmap);
                     });
 
-//                    int cnt = 0;
-//                    for (String encodedImage : encodedImages) {
-//                        byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
-//                        Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
-//                        runOnUiThread(() -> {
-//                            setTextView("encodedImages");
-//                            imageView.setImageBitmap(bitmap);
-//                        });
-//                        Log.d(TAG, String.valueOf(cnt));
-//                        cnt += 1;
-//                    }
+                    for (Map<String, Object> message : messages) {
+                        Log.d(TAG, message.toString());
+                    }
 
                 })
                 .exceptionally(e -> {
@@ -291,158 +222,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return null;
     }
 
-    private void testPostImageInterface() {
-        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
-
-        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                imageView.setImageBitmap(bitmap);
-                textView.setText("准备发送上图");
-            }
-        });
-
-        Map<String, String> params = new HashMap<>();
-        params.put("point_coord_0", "200");
-        params.put("point_coord_1", "100");
-        params.put("point_label", "1");
-        params.put("use_mask", "0");
-        params.put("mode", "0");
-
-        String url = "http://172.18.36.107:5000/sam";
-        boolean isImage = true;
-        boolean isText = false;
-
-        okhttpPost(url, params, imageFile, isImage, isText)
-                .thenAccept(customResponse -> {
-                    // 在这里处理修改后的customResponse
-                    String text = customResponse.getText();
-                    File image = customResponse.getImage();
-
-                    if (text != null) {
-                        setTextView(text);
-                    }
-
-                    if (image != null) {
-                        Bitmap bitmapNew = BitmapFactory.decodeFile(image.getAbsolutePath());
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(bitmapNew);
-                                textView.setText("获取到上图");
-                            }
-                        });
-                    }
-                })
-                .exceptionally(e -> {
-                    // 处理异常
-                    Log.d(TAG, "exception in interface: " + e.getMessage());
-                    return null;
-                });
-
-    }
-
-    private void testPostTextInterface() {
-        Map<String, String> params = new HashMap<>();
-        params.put("studentId", "12345673");
-        params.put("name", "hiii");
-        params.put("password", "password123");
-        params.put("type", "user");
-
-        String url = "http://10.25.6.55:80/users";
-
-        okhttpPost(url, params, null, false, true)
-                .thenAccept(customResponse -> {
-                    // 在这里处理修改后的customResponse
-                    String text = customResponse.getText();
-                    File image = customResponse.getImage();
-                    Bitmap bitmap = BitmapFactory.decodeFile(image.getAbsolutePath());
-                    if (text != null) {
-                        setTextView(text);
-                    }
-                    if (image != null) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(bitmap);
-                                textView.setText("获取到上图");
-                            }
-                        });
-                    }
-                })
-                .exceptionally(e -> {
-                    // 处理异常
-                    Log.d(TAG, "exception in interface: " + e.getMessage());
-                    return null;
-                });
-    }
-
-    private void testReceiveVideo() {
-        String url = "https://media.w3.org/2010/05/sintel/trailer.mp4";
-        OkHttpClient client = new OkHttpClient();
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(url)
-                .build();
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                try {
-                    ResponseBody responseBody = response.body();
-                    String filePath = MainActivity.this.getFilesDir() + File.separator + "video.mp4";
-                    File videoFile = convertResponseBodyToVideo(responseBody, filePath);
-                    runOnUiThread(() -> {
-                        textView.setText("loading");
-                        VideoView videoView = findViewById(R.id.videoView);
-                        videoView.setVideoPath(videoFile.getAbsolutePath());
-                        videoView.start();
-                    });
-                } catch (Exception e) {
-                    Log.d(TAG, "exception in handling response: \n" + e.getMessage());
-                }
-            }
-            @Override
-            public void onFailure(Call call, IOException e) {
-                setTextView("Error: \n" + e.getMessage());
-            }
-        });
-    }
-
-    private void testReceivePicture() {
-        String url = "https://github.com/qwq-y/ChatRoom/blob/main/imgs/register.png?raw=true";
-        OkHttpClient client = new OkHttpClient();
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(url)
-                .build();
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onResponse(Call call, okhttp3.Response response) throws IOException {
-                setTextView("收到回复！");
-                try {
-                    ResponseBody responseBody = response.body();
-                    if (responseBody != null) {
-                        String filePath = MainActivity.this.getFilesDir() + "image.jpg";
-                        File imageFile = convertResponseBodyToImage(responseBody, filePath);
-                        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(bitmap);
-                                textView.setText("获取到上图");
-                            }
-                        });
-                    }
-                } catch (Exception e) {
-                    Log.d(TAG, "exception in handling response: \n" + e.getMessage());
-                }
-            }
-            @Override
-            public void onFailure(Call call, IOException e) {
-                setTextView("Error: \n" + e.getMessage());
-            }
-        });
-    }
-
     private File getImageFileFromDrawable(Context context, int resId) {
         Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resId);
         File imageFile = new File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "test_image.png");
@@ -466,127 +245,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return imageFile;
     }
 
-    private void saveBitmapToFile(Bitmap bitmap) {
-        try {
-            // 获取应用的私有存储目录
-            File directory = getFilesDir();
-
-            // 创建保存文件的目标路径
-            File file = new File(directory, "received_image.jpg");
-
-            // 创建文件输出流
-            FileOutputStream outputStream = new FileOutputStream(file);
-
-            // 将Bitmap写入输出流，并指定压缩格式和质量
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
-
-            // 刷新输出流
-            outputStream.flush();
-
-            // 关闭输出流
-            outputStream.close();
-
-            Log.i(TAG, "bitmap saved to: " + file.getAbsolutePath());
-        } catch (IOException e) {
-            Log.d(TAG, "exception in saving bitmap to file: " + e.getMessage());
-        }
-    }
-
-    private File getFileFromResource(int resId) {
-        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), resId);
-        File tempFile = new File(getCacheDir(), "temp_image.jpg");
-        try {
-            FileOutputStream outputStream = new FileOutputStream(tempFile);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
-            outputStream.flush();
-            outputStream.close();
-        } catch (IOException e) {
-            Log.d(TAG, "exception in getting file from resource: " + e.getMessage());
-        }
-        return tempFile;
-    }
-
-    private File convertResponseBodyToImage(ResponseBody responseBody, String filePath) throws IOException {
-        InputStream inputStream = null;
-        FileOutputStream outputStream = null;
-        File imageFile = null;
-
-        try {
-            inputStream = responseBody.byteStream();
-            outputStream = new FileOutputStream(filePath);
-
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            long totalBytesRead = 0;
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, bytesRead);
-                totalBytesRead += bytesRead;
-                Log.d(TEMP, String.valueOf(totalBytesRead));
-            }
-            imageFile = new File(filePath);
-            Log.d(TAG, "成功保存图片到：" + filePath);
-
-        } catch (Exception e) {
-            Log.d(TAG, "exception in saving image: \n" + e.getMessage());
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (outputStream != null) {
-                outputStream.close();
-            }
-            responseBody.close();
-        }
-
-        return imageFile;
-    }
-
-    private File convertResponseBodyToVideo(ResponseBody responseBody, String filePath) throws IOException {
-        File file = new File(filePath);
-        BufferedSink bufferedSink = Okio.buffer(Okio.sink(file));
-        bufferedSink.writeAll(responseBody.source());
-        bufferedSink.close();
-        return file;
-    }
-
-    private File convertResponseBodyToFile(ResponseBody responseBody, String filePath) throws IOException {
-        File file = new File(filePath);
-        BufferedSink bufferedSink = Okio.buffer(Okio.sink(file));
-        bufferedSink.writeAll(responseBody.source());
-        bufferedSink.close();
-        return file;
-    }
-
-    private void unzipImages(File zipFile) throws IOException {
-        ZipInputStream zipInputStream = new ZipInputStream(new FileInputStream(zipFile));
-        ZipEntry entry;
-        while ((entry = zipInputStream.getNextEntry()) != null) {
-            if (!entry.isDirectory() && isImageFile(entry.getName())) {
-                String fileName = entry.getName();
-                String extractedFilePath = MainActivity.this.getFilesDir() + File.separator + fileName;
-                File extractedFile = new File(extractedFilePath);
-                FileOutputStream fos = new FileOutputStream(extractedFile);
-                byte[] buffer = new byte[1024];
-                int length;
-                while ((length = zipInputStream.read(buffer)) > 0) {
-                    fos.write(buffer, 0, length);
-                }
-                fos.close();
-
-                runOnUiThread(() -> {
-                     imageView.setImageURI(Uri.fromFile(extractedFile));
-                });
-            }
-            zipInputStream.closeEntry();
-        }
-        zipInputStream.close();
-    }
-
-    private boolean isImageFile(String fileName) {
-        String extension = fileName.substring(fileName.lastIndexOf(".") + 1);
-        return extension.equalsIgnoreCase("jpg") || extension.equalsIgnoreCase("jpeg") || extension.equalsIgnoreCase("png");
-    }
-
     private void setTextView(String text) {
         runOnUiThread(new Runnable() {
             @Override
@@ -596,209 +254,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
     }
 
-    private void okhttpGet(String url) throws IOException {
-        OkHttpClient client = new OkHttpClient();
-
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(url)
-                .build();
-
-        try (okhttp3.Response response = client.newCall(request).execute()) {
-            final String responseBody = response.body().string();
-            setTextView("收到回复：" + responseBody);
-        }
-    }
-
-    private void okhttpGet(String url, Map<String, String> params) {
-        OkHttpClient client = new OkHttpClient();
-
-        HttpUrl.Builder httpUrl = HttpUrl.parse(url).newBuilder();
-        Map<String, String> map = new HashMap<String, String>(params);
-        for (Map.Entry<String, String> entry : map.entrySet()) {
-            httpUrl.addQueryParameter(entry.getKey(), entry.getValue());
-        }
-
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(httpUrl.build())
-                .build();
-        client.newCall(request).enqueue(new okhttp3.Callback() {
-            @Override
-            public void onResponse(okhttp3.Call call, okhttp3.Response response) throws IOException {
-                // 处理响应
-                String responseBody = response.body().string();
-                setTextView("收到回复：" + responseBody);
-            }
-
-            @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
-                setTextView("Error: " + e.getMessage());
-            }
-        });
-    }
-
-    private void okhttpPost(String url, Map<String, String> params) {
-        OkHttpClient client = new OkHttpClient();
-
-        FormBody.Builder formBodyBuilder = new FormBody.Builder();
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            formBodyBuilder.add(entry.getKey(), entry.getValue());
-        }
-        RequestBody requestBody = formBodyBuilder.build();
-
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onResponse(Call call, okhttp3.Response response) throws IOException {
-                // 处理响应
-                String responseBody = response.body().string();
-                setTextView("收到回复：" + responseBody);
-            }
-
-            @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
-                setTextView("Error: " + e.getMessage());
-            }
-        });
-    }
-
-    private void okhttpPost(String url, Map<String, String> params, File imageFile) {
+    private CompletableFuture<CustomResponse> postVideo(String url, Map<String, String> params, File imageFile,  File videoFile) {
         OkHttpClient client = new OkHttpClient();
 
         MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM);
 
-        // 添加文本参数
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
-        }
-        // 添加图片文件
-        if (imageFile != null) {
-            multipartBuilder.addFormDataPart("image", imageFile.getName(),
-                    RequestBody.create(MediaType.parse("image/*"), imageFile));
-        }
-
-        RequestBody requestBody = multipartBuilder.build();
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onResponse(Call call, okhttp3.Response response) throws IOException {
-                setTextView("收到回复！");
-                try {
-                    ResponseBody responseBody = response.body();
-
-                    String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
-                    File imageFile = convertResponseBodyToImage(responseBody, filePath);
-                    Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            imageView.setImageBitmap(bitmap);
-                            textView.setText("获取到上图");
-                        }
-                    });
-
-                } catch (Exception e) {
-                    Log.d(TAG, "exception in handling response: \n" + e.getMessage());
-                }
-            }
-            @Override
-            public void onFailure(Call call, IOException e) {
-                setTextView("Error: \n" + e.getMessage());
-            }
-        });
-    }
-
-    private CompletableFuture<CustomResponse> okhttpPost(String url, Map<String, String> params, File imageFile, Boolean isImage, Boolean isText) {
-        OkHttpClient client = new OkHttpClient();
-
-        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
-                .setType(MultipartBody.FORM);
-
-        // 添加文本参数
         if (params != null) {
             for (Map.Entry<String, String> entry : params.entrySet()) {
                 multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
             }
         }
-
-        // 添加图片文件
         if (imageFile != null) {
             multipartBuilder.addFormDataPart("image", imageFile.getName(),
                     RequestBody.create(MediaType.parse("image/*"), imageFile));
         }
-
-        RequestBody requestBody = multipartBuilder.build();
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
-
-        CompletableFuture<CustomResponse> future = new CompletableFuture<>();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onResponse(Call call, okhttp3.Response response) throws IOException {
-                try {
-                    CustomResponse customResponse = new CustomResponse();
-                    ResponseBody responseBody = response.body();
-
-                    if (isImage && !isText) {
-                        String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
-                        File imageFile = convertResponseBodyToImage(responseBody, filePath);
-//                        Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-                        customResponse.setImage(imageFile);
-                    } else if (!isImage && isText) {
-                        String responseString = responseBody.string();
-                        customResponse.setText(responseString);
-                    } else if (isImage && isText) {
-                        // TODO: 处理返回体既需要图片又需要文本的情况
-                    }
-
-                    future.complete(customResponse);
-                } catch (Exception e) {
-                    future.completeExceptionally(e);
-                }
-            }
-
-            @Override
-            public void onFailure(Call call, IOException e) {
-                future.completeExceptionally(e);
-            }
-        });
-
-        return future;
-    }
-
-    private CompletableFuture<CustomResponse> okhttpPost(String url, Map<String, String> params, File imageFile,  File videoFile, Boolean isImage, Boolean isText, Boolean isVideo) {
-        OkHttpClient client = new OkHttpClient();
-
-        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
-                .setType(MultipartBody.FORM);
-
-        // 添加文本参数
-        if (params != null) {
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
-            }
-        }
-
-        // 添加图片文件
-        if (imageFile != null) {
-            multipartBuilder.addFormDataPart("image", imageFile.getName(),
-                    RequestBody.create(MediaType.parse("image/*"), imageFile));
-        }
-
-        // 添加视频文件
         if (videoFile != null) {
             multipartBuilder.addFormDataPart("video", videoFile.getName(),
                     RequestBody.create(MediaType.parse("video/*"), videoFile));
@@ -819,26 +289,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     CustomResponse customResponse = new CustomResponse();
                     ResponseBody responseBody = response.body();
 
-                    if (isImage && !isText && !isVideo) {
-                        String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
-                        File imageFile = convertResponseBodyToImage(responseBody, filePath);
-                        customResponse.setImage(imageFile);
-                    } else if (!isImage && isText && !isVideo) {
-                        String responseString = responseBody.string();
-                        customResponse.setText(responseString);
-                    } else if (!isImage && !isText && isVideo) {
-                        String filePath = MainActivity.this.getFilesDir() + File.separator + "video.mp4";
-                        File videoFile = convertResponseBodyToVideo(responseBody, filePath);
-                        customResponse.setVideo(videoFile);
-                    } else if (isImage && isText && !isVideo) {
-                        // TODO: 处理返回体既需要图片又需要文本的情况
-                    } else if (isImage && !isText && isVideo) {
-                        // TODO: 处理返回体既需要图片又需要视频的情况
-                    } else if (!isImage && isText && isVideo) {
-                        // TODO: 处理返回体既需要文本又需要视频的情况
-                    } else if (isImage && isText && isVideo) {
-                        // TODO: 处理返回体既需要图片又需要文本又需要视频的情况
-                    }
+                    String filePath = MainActivity.this.getFilesDir() + File.separator + "video.mp4";
+                    File videoFile = new File(filePath);
+                    BufferedSink bufferedSink = Okio.buffer(Okio.sink(videoFile));
+                    bufferedSink.writeAll(responseBody.source());
+                    bufferedSink.close();
+
+                    customResponse.setVideo(videoFile);
 
                     future.complete(customResponse);
                 } catch (Exception e) {
@@ -855,7 +312,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return future;
     }
 
-    private CompletableFuture<CustomResponse> okhttpPost(String url, Map<String, String> params, File imageFile,  File videoFile, Boolean isImage, Boolean isText, Boolean isVideo, Boolean isMultipleImage) {
+    private CompletableFuture<CustomResponse> postHOP(String url, Map<String, String> params, File imageFile) {
         OkHttpClient client = new OkHttpClient();
 
         MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
@@ -874,12 +331,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     RequestBody.create(MediaType.parse("image/*"), imageFile));
         }
 
-        // 添加视频文件
-        if (videoFile != null) {
-            multipartBuilder.addFormDataPart("video", videoFile.getName(),
-                    RequestBody.create(MediaType.parse("video/*"), videoFile));
-        }
-
         RequestBody requestBody = multipartBuilder.build();
         okhttp3.Request request = new okhttp3.Request.Builder()
                 .url(url)
@@ -894,95 +345,44 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 try {
                     CustomResponse customResponse = new CustomResponse();
                     ResponseBody responseBody = response.body();
+                    String responseString = responseBody.string();
+                    JSONObject jsonObject = new JSONObject(responseString);
 
-                    if (isMultipleImage) {
-                        String filePath = MainActivity.this.getFilesDir() + File.separator + "images.zip";
-                        File zipFile = convertResponseBodyToFile(responseBody, filePath);
-                        customResponse.setZipImage(zipFile);
-                    }
-//                    if (isImage && !isText && !isVideo) {
-//                        String filePath = MainActivity.this.getFilesDir() + File.separator + "image.jpg";
-//                        File imageFile = convertResponseBodyToImage(responseBody, filePath);
-//                        customResponse.setImage(imageFile);
-//                    } else if (!isImage && isText && !isVideo) {
-//                        String responseString = responseBody.string();
-//                        customResponse.setText(responseString);
-//                    } else if (!isImage && !isText && isVideo) {
-//                        String filePath = MainActivity.this.getFilesDir() + File.separator + "video.mp4";
-//                        File videoFile = convertResponseBodyToVideo(responseBody, filePath);
-//                        customResponse.setVideo(videoFile);
-//                    } else if (isImage && isText && !isVideo) {
-//                        // TODO: 处理返回体既需要图片又需要文本的情况
-//                    } else if (isImage && !isText && isVideo) {
-//                        // TODO: 处理返回体既需要图片又需要视频的情况
-//                    } else if (!isImage && isText && isVideo) {
-//                        // TODO: 处理返回体既需要文本又需要视频的情况
-//                    } else if (isImage && isText && isVideo) {
-//                        // TODO: 处理返回体既需要图片又需要文本又需要视频的情况
-//                    }
-
-                    future.complete(customResponse);
-                } catch (Exception e) {
-                    future.completeExceptionally(e);
-                }
-            }
-
-            @Override
-            public void onFailure(Call call, IOException e) {
-                future.completeExceptionally(e);
-            }
-        });
-
-        return future;
-    }
-
-    private CompletableFuture<CustomResponse> testJsonify(String url, Map<String, String> params, File imageFile) {
-        OkHttpClient client = new OkHttpClient();
-
-        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder()
-                .setType(MultipartBody.FORM);
-
-        if (params != null) {
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
-            }
-        }
-        if (imageFile != null) {
-            multipartBuilder.addFormDataPart("image", imageFile.getName(),
-                    RequestBody.create(MediaType.parse("image/*"), imageFile));
-        }
-
-        RequestBody requestBody = multipartBuilder.build();
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
-
-        CompletableFuture<CustomResponse> future = new CompletableFuture<>();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onResponse(Call call, okhttp3.Response response) throws IOException {
-                try {
-                    // TODO
-                    CustomResponse customResponse = new CustomResponse();
-
-                    // 解析JSON
-                    String responseBody = response.body().string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-
+                    // 获取状态码
                     String status = jsonObject.getString("Status");
-
-                    JSONArray encodedImagesArray = jsonObject.getJSONArray("ImageBytes");
-                    List<String> encodedImages = new ArrayList<>();
-
-                    // 将encodedImages字段中的数据添加到列表中
-                    for (int i = 0; i < encodedImagesArray.length(); i++) {
-                        String encodedImage = encodedImagesArray.getString(i);
-                        encodedImages.add(encodedImage);
+                    if (status != null) {
+                        customResponse.setStatus(status);
                     }
 
-                    customResponse.setEncodedImages(encodedImages);
+                    // 获取图像列表
+                    JSONArray encodedImagesArray = jsonObject.getJSONArray("ImageBytes");
+                    if (encodedImagesArray != null) {
+                        List<String> images = new ArrayList<>();
+                        for (int i = 0; i < encodedImagesArray.length(); i++) {
+                            String encodedImage = encodedImagesArray.getString(i);
+                            images.add(encodedImage);
+                        }
+                        customResponse.setImages(images);
+                    }
+
+                    // 获取消息列表
+                    JSONArray messageListArray = jsonObject.getJSONArray("Message");
+                    if (messageListArray != null) {
+                        List<Map<String, Object>> messageList = new ArrayList<>();
+                        for (int i = 0; i < messageListArray.length(); i++) {
+                            JSONObject messageDict = messageListArray.getJSONObject(i);
+                            Map<String, Object> messageMap = new HashMap<>();
+
+                            Iterator<String> keys = messageDict.keys();
+                            while (keys.hasNext()) {
+                                String key = keys.next();
+                                Object value = messageDict.get(key);
+                                messageMap.put(key, value);
+                            }
+                            messageList.add(messageMap);
+                        }
+                        customResponse.setMessages(messageList);
+                    }
 
                     future.complete(customResponse);
                 } catch (Exception e) {
