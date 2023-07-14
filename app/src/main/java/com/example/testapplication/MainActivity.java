@@ -21,6 +21,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.VideoView;
@@ -88,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView textView;
     private ImageView imageView;
     private VideoView videoView;
+    private EditText textInput;
 
     int imageNo = 0;
 
@@ -95,6 +97,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        textInput = findViewById(R.id.textInput);
 
         textView = findViewById(R.id.textView);
 
@@ -110,6 +114,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         if (view.getId() == R.id.sendButton) {
             try {
+                imageNo = Integer.parseInt(textInput.getText().toString());
                 new Thread(new Runnable() {
                     @Override
                     public void run() {

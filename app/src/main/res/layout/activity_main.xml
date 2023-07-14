@@ -14,6 +14,13 @@
         android:textColor="#FFFFFF"
         android:textSize="15sp"/>
 
+    <EditText
+        android:id="@+id/textInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="想看第几张图？"
+        android:inputType="number" />
+
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="match_parent"
