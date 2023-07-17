@@ -15,6 +15,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Test Application"
-include ':app'
+include ':http'
 
 include ':video'
+include ':graph'

@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
         player.setPlayWhenReady(true);
 
-        clippingMediaSource();
+//        clippingMediaSource();
 
     }
 
