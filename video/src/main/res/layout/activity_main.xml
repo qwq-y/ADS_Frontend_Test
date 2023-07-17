@@ -1,23 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 
+<!--<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
+<!--    android:layout_width="match_parent"-->
+<!--    android:layout_height="match_parent"-->
+<!--    android:orientation="vertical"-->
+<!--    android:gravity="center">-->
+
+<!--    <Button-->
+<!--        android:id="@+id/btn_send"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="点击测试按钮"-->
+<!--        android:textColor="#FFFFFF"-->
+<!--        android:textSize="15sp"/>-->
+
+<!--    <TextView-->
+<!--        android:id="@+id/text"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="点击前" />-->
+
+<!--</LinearLayout>-->
+
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center">
+    tools:context=".MainActivity">
+
+    <com.google.android.exoplayer2.ui.StyledPlayerView
+        android:id="@+id/player_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:use_controller="true" />
 
     <Button
-        android:id="@+id/btn_send"
+        android:id="@+id/btn_play"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="点击测试按钮"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"/>
+        android:text="Play" />
 
-    <TextView
-        android:id="@+id/text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="点击前" />
+<!--    <RelativeLayout-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="match_parent">-->
+
+<!--        <SurfaceView-->
+<!--            android:id="@+id/surfaceView"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="match_parent" />-->
+
+<!--        <Button-->
+<!--            android:id="@+id/playPauseButton"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Play" />-->
+
+<!--        <SeekBar-->
+<!--            android:id="@+id/seekBar"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_below="@id/surfaceView"-->
+<!--            android:max="100" />-->
+
+<!--    </RelativeLayout>-->
 
 </LinearLayout>
+
+
