@@ -17,4 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "Test Application"
 include ':app'
 
-include ':blank'
+include ':video'
