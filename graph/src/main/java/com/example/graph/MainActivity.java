@@ -2,10 +2,12 @@ package com.example.graph;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -17,6 +19,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private String TAG = "ww";
 
     private GestureDetector gestureDetector;
+
+    int imageViewX, imageViewY, imageViewWidth, imageViewHeight;
 
     private Button sendButton;
     private TextView textView;
@@ -37,9 +41,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         imageView = findViewById((R.id.imageView));
         imageView.setImageResource(R.drawable.test_image);
         imageView.setOnTouchListener(this);
+        imageView.post(new Runnable() {
+            @Override
+            public void run() {
+                // 获取ImageView在屏幕上的可见矩形区域
+                Rect rect = new Rect();
+                imageView.getGlobalVisibleRect(rect);
+                imageViewX = rect.left;
+                imageViewY = rect.top;
+                imageViewWidth = rect.width();
+                imageViewHeight = rect.height();
+            }
+        });
 
         sendButton = findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
+    }
+
+    private boolean isCoordinateInsideImage(int x, int y) {
+        return x >= imageViewX && x <= imageViewX + imageViewWidth &&
+                y >= imageViewY && y <= imageViewY + imageViewHeight;
     }
 
     @Override
@@ -54,7 +75,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             gestureDetector.onTouchEvent(event);
             int x = (int) event.getX();
             int y = (int) event.getY();
-            textView.setText("点击坐标：x = " + x + ", y = " + y);
+
+            if (isCoordinateInsideImage(x, y)) {
+                textView.setText("点击坐标：x = " + x + ", y = " + y);
+            } else {
+                textView.setText("点击坐标不在图片范围内");
+            }
             return true;
         }
         return false;

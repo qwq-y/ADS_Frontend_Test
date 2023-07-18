@@ -19,3 +19,4 @@ include ':http'
 
 include ':video'
 include ':graph'
+include ':screenshot'
