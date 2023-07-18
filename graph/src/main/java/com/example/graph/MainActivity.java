@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -41,26 +42,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         imageView = findViewById((R.id.imageView));
         imageView.setImageResource(R.drawable.test_image);
         imageView.setOnTouchListener(this);
-        imageView.post(new Runnable() {
-            @Override
-            public void run() {
-                // 获取ImageView在屏幕上的可见矩形区域
-                Rect rect = new Rect();
-                imageView.getGlobalVisibleRect(rect);
-                imageViewX = rect.left;
-                imageViewY = rect.top;
-                imageViewWidth = rect.width();
-                imageViewHeight = rect.height();
-            }
-        });
 
         sendButton = findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
+
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            setImageViewInfo();
+        }
+    }
+
+    private void setImageViewInfo() {
+        int[] location = new int[2];
+        imageView.getLocationOnScreen(location);
+        imageViewX = location[0];
+        imageViewY = location[1];
+        imageViewWidth = imageView.getWidth();
+        imageViewHeight = imageView.getHeight();
+        Log.d(TAG, "image view info: \n" + imageViewX + "\n" + imageViewY + "\n" + imageViewWidth + "\n" + imageViewHeight);
+        Log.d(TAG, "[" + imageViewX + ", " + (imageViewX + imageViewWidth) + "][" + imageViewY + ", " + (imageViewY + imageViewHeight) + "]");
     }
 
     private boolean isCoordinateInsideImage(int x, int y) {
-        return x >= imageViewX && x <= imageViewX + imageViewWidth &&
-                y >= imageViewY && y <= imageViewY + imageViewHeight;
+//        return x >= imageViewX && x <= imageViewX + imageViewWidth &&
+//                y >= imageViewY && y <= imageViewY + imageViewHeight;
+        return x >= 0 && x <= imageViewWidth && y >= 0 && y <= imageViewHeight;
     }
 
     @Override
@@ -76,6 +86,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             int x = (int) event.getX();
             int y = (int) event.getY();
 
+            Log.d(TAG, "点击坐标：x = " + x + ", y = " + y);
             if (isCoordinateInsideImage(x, y)) {
                 textView.setText("点击坐标：x = " + x + ", y = " + y);
             } else {
