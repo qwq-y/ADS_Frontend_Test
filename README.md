@@ -64,11 +64,13 @@ HOP 项目可使用 postHOP 方法，下面对该接口的使用进行介绍。
 
 返回类型为 CompletableFuture<CustomResponse> ，其中 CustomResponse 是自定义类，包括四个私有参数：
 
+    private Map<String, String> images;    // base64 编码的图片 Map
+
+    private Map<String, String> links;    // 链接 Map（主要在 DINO 用到）
+    
+    private String message;    // 消息
+    
     private String status;    // 状态码
-
-    private List<String> images;    // base64 编码的图片列表
-
-    List<Map<String, Object>> messages;    // 消息列表
 
     private File video;    // 单个视频文件（HOP 没有用到）
 
@@ -76,43 +78,41 @@ HOP 项目可使用 postHOP 方法，下面对该接口的使用进行介绍。
 
 #### 使用示例
 
-    private void testHop() {
-
+    private void testDINO() {
         // 准备图片参数
-        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
+        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_search_k);
 
         // 准备文本参数
         Map<String, String> params = new HashMap<>();
-        params.put("point_coord_0", "200");
-        params.put("point_coord_1", "100");
-        params.put("point_label", "1");
-        params.put("use_mask", "0");
-        params.put("mode", "0");
+        params.put("K", "3");
 
         // 后端接口地址（请替换为实际地址）
-        String url = "http://192.168.3.124:80/imagelist";
+        String url = "http://172.18.36.107:5001/searchK";
 
-        // 调用 postHOP 方法，与 HOP 后端进行通信
+        // 调用通信方法
         postHOP(url, params, imageFile)
                 .thenAccept(customResponse -> {
                     
-                    // 获取收到的响应信息（这里获取了图片列表和消息列表）
-                    List<String> encodedImages = customResponse.getImages();
-                    List<Map<String, Object>> messages = customResponse.getMessages();
+                    // 处理返回体，获取需要的各个部分
+                    Map<String, String> images = customResponse.getImages();
+                    Map<String, String> links = customResponse.getLinks();
+                    String message = customResponse.getMessage();
+                    String status = customResponse.getStatus();
 
-                    // 处理收到的图片列表（这里将指定图片显示在页面中）
-                    String image = encodedImages.get(imageNo);
-                    byte[] decodedBytes = Base64.decode(image, Base64.DEFAULT);
+                    // 这里在日志进行了打印
+                    Log.d(TAG, "status: \n" + status);
+                    Log.d(TAG, "message: \n" + message);
+                    Log.d(TAG, "links: \n" + links.toString());
+                    Log.d(TAG, "images: \n" + images.toString());
+
+                    // 这里显示了图片之一
+                    String imageStr = images.get("top_1_image");
+                    byte[] decodedBytes = Base64.decode(imageStr, Base64.DEFAULT);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
                     runOnUiThread(() -> {
-                        setTextView("image number: " + imageNo);
+                        setTextView("top_1_image");
                         imageView.setImageBitmap(bitmap);
                     });
-
-                    // 处理收到的消息列表（这里将消息作为日志打印）
-                    for (Map<String, Object> message : messages) {
-                        Log.d(TAG, message.toString());
-                    }
 
                 })
                 .exceptionally(e -> {
