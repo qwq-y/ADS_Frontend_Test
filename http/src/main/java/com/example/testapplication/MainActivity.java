@@ -19,14 +19,19 @@ import android.os.FileUtils;
 import android.os.Handler;
 import android.util.Base64;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.VideoView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
@@ -88,22 +93,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button sendButton;
     private TextView textView;
     private ImageView imageView;
+    private RecyclerView recyclerView;
     private VideoView videoView;
-//    private EditText textInput;
-    int imageNo = 0;
+
+    private List<Bitmap> bitmapList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-//        textInput = findViewById(R.id.textInput);
+        recyclerView = findViewById(R.id.imageRecyclerView);
 
         textView = findViewById(R.id.textView);
 
         imageView = findViewById((R.id.imageView));
+        imageView.setImageResource(R.drawable.test_search_k);
 
-        videoView = findViewById(R.id.videoView);
+//        videoView = findViewById(R.id.videoView);
 
         sendButton = findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
@@ -113,12 +120,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         if (view.getId() == R.id.sendButton) {
             try {
-//                imageNo = Integer.parseInt(textInput.getText().toString());
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
                         try {
-                            testSAM();
+                            testDINO();
                         } catch (Exception e) {
                             Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
@@ -130,44 +136,45 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void testVideo() {
-
-        File videoFile = getVideoFileFromRaw(MainActivity.this, R.raw.test_video);
-
-        Map<String, String> params = new HashMap<>();
-        params.put("point_coord_0", "200");
-        params.put("point_coord_1", "100");
-        params.put("point_label", "1");
-        params.put("use_mask", "0");
-        params.put("mode", "0");
-
-        String url = "http://172.18.36.107:1200/video";
-
-        postVideo(url, params, null, videoFile)
-                .thenAccept(customResponse -> {
-                    File video = customResponse.getVideo();
-
-                    if (video != null) {
-                        runOnUiThread(() -> {
-                            VideoView videoView = findViewById(R.id.videoView);
-                            videoView.setVideoPath(video.getAbsolutePath());
-                            videoView.start();
-                        });
-                    }
-                })
-                .exceptionally(e -> {
-                    // 处理异常
-                    Log.d(TAG, "exception in interface: " + e.getMessage());
-                    return null;
-                });
-
-    }
+//    private void testVideo() {
+//
+//        File videoFile = getVideoFileFromRaw(MainActivity.this, R.raw.test_video);
+//
+//        Map<String, String> params = new HashMap<>();
+//        params.put("point_coord_0", "200");
+//        params.put("point_coord_1", "100");
+//        params.put("point_label", "1");
+//        params.put("use_mask", "0");
+//        params.put("mode", "0");
+//
+//        String url = "http://172.18.36.107:1200/video";
+//
+//        postVideo(url, params, null, videoFile)
+//                .thenAccept(customResponse -> {
+//                    File video = customResponse.getVideo();
+//
+//                    if (video != null) {
+//                        runOnUiThread(() -> {
+//                            VideoView videoView = findViewById(R.id.videoView);
+//                            videoView.setVideoPath(video.getAbsolutePath());
+//                            videoView.start();
+//                        });
+//                    }
+//                })
+//                .exceptionally(e -> {
+//                    // 处理异常
+//                    Log.d(TAG, "exception in interface: " + e.getMessage());
+//                    return null;
+//                });
+//
+//    }
 
     private void testDINO() {
+
         File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_search_k);
 
         Map<String, String> params = new HashMap<>();
-        params.put("K", "3");
+        params.put("K", "11");
 
         String url = "http://172.18.36.107:5001/searchK";
 
@@ -182,14 +189,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Log.d(TAG, "status: \n" + status);
                     Log.d(TAG, "message: \n" + message);
                     Log.d(TAG, "links: \n" + links.toString());
-                    Log.d(TAG, "images: \n" + images.toString());
+                    Log.d(TAG, "images: \n");
+                    for (Map.Entry<String, String> entry : images.entrySet()) {
+                        Log.d(TAG, entry.toString());
+                    }
 
-                    String imageStr = images.get("top_1_image");
-                    byte[] decodedBytes = Base64.decode(imageStr, Base64.DEFAULT);
-                    Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                    bitmapList = convertBase64ImagesToBitmaps(images);
+
                     runOnUiThread(() -> {
-                        setTextView("top_1_image");
-                        imageView.setImageBitmap(bitmap);
+                        setTextView("搜索到相似商品");
+                        displayImages();
                     });
 
                 })
@@ -283,6 +292,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
         return imageFile;
+    }
+
+    private List<Bitmap> convertBase64ImagesToBitmaps(Map<String, String> imageMap) {
+        List<Bitmap> bitmapList = new ArrayList<>();
+        for (String imageData : imageMap.values()) {
+            byte[] decodedString = Base64.decode(imageData, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+            bitmapList.add(bitmap);
+        }
+        return bitmapList;
+    }
+
+    private void displayImages() {
+        ImageAdapter imageAdapter = new ImageAdapter();
+        recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+        recyclerView.setAdapter(imageAdapter);
     }
 
     private void setTextView(String text) {
@@ -439,6 +464,36 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
 
         return future;
+    }
+
+    private class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHolder> {
+
+        @NonNull
+        @Override
+        public ImageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_image, parent, false);
+            return new ImageViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ImageViewHolder holder, int position) {
+            Bitmap bitmap = bitmapList.get(position);
+            holder.imageView.setImageBitmap(bitmap);
+        }
+
+        @Override
+        public int getItemCount() {
+            return bitmapList.size();
+        }
+
+        private class ImageViewHolder extends RecyclerView.ViewHolder {
+            ImageView imageView;
+
+            ImageViewHolder(@NonNull View itemView) {
+                super(itemView);
+                imageView = itemView.findViewById(R.id.imageView);
+            }
+        }
     }
 
 }

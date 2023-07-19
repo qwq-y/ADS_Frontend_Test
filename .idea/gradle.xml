@@ -11,8 +11,9 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/graph" />
+            <option value="$PROJECT_DIR$/coordinate" />
             <option value="$PROJECT_DIR$/http" />
+            <option value="$PROJECT_DIR$/multigraph" />
             <option value="$PROJECT_DIR$/screenshot" />
             <option value="$PROJECT_DIR$/video" />
           </set>

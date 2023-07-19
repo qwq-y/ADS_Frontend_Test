@@ -18,5 +18,6 @@ rootProject.name = "Test Application"
 include ':http'
 
 include ':video'
-include ':graph'
+include ':coordinate'
 include ':screenshot'
+include ':multigraph'
