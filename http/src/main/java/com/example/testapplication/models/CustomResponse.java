@@ -8,15 +8,37 @@ import java.util.Map;
 
 public class CustomResponse {
 
+    private Map<String, String> images;
+    private Map<String, String> links;
+    private String message;
     private String status;
-
-    private List<String> images;
-
-    List<Map<String, Object>> messages;
-
     private File video;
 
     public CustomResponse() {}
+
+    public Map<String, String> getImages() {
+        return images;
+    }
+
+    public void setImages(Map<String, String> images) {
+        this.images = images;
+    }
+
+    public Map<String, String> getLinks() {
+        return links;
+    }
+
+    public void setLinks(Map<String, String> links) {
+        this.links = links;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
 
     public String getStatus() {
         return status;
@@ -24,22 +46,6 @@ public class CustomResponse {
 
     public void setStatus(String status) {
         this.status = status;
-    }
-
-    public List<String> getImages() {
-        return images;
-    }
-
-    public void setImages(List<String> images) {
-        this.images = images;
-    }
-
-    public List<Map<String, Object>> getMessages() {
-        return messages;
-    }
-
-    public void setMessages(List<Map<String, Object>> messages) {
-        this.messages = messages;
     }
 
     public File getVideo() {

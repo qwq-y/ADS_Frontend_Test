@@ -89,8 +89,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView textView;
     private ImageView imageView;
     private VideoView videoView;
-    private EditText textInput;
-
+//    private EditText textInput;
     int imageNo = 0;
 
     @Override
@@ -98,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textInput = findViewById(R.id.textInput);
+//        textInput = findViewById(R.id.textInput);
 
         textView = findViewById(R.id.textView);
 
@@ -114,12 +113,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         if (view.getId() == R.id.sendButton) {
             try {
-                imageNo = Integer.parseInt(textInput.getText().toString());
+//                imageNo = Integer.parseInt(textInput.getText().toString());
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
                         try {
-                            testHop();
+                            testSAM();
                         } catch (Exception e) {
                             Log.d(TAG, "exception in click run: " + e.getMessage());
                         }
@@ -164,35 +163,71 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    private void testHop() {
-        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_image);
+    private void testDINO() {
+        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_search_k);
 
         Map<String, String> params = new HashMap<>();
-        params.put("point_coord_0", "200");
-        params.put("point_coord_1", "100");
-        params.put("point_label", "1");
-        params.put("use_mask", "0");
-        params.put("mode", "0");
+        params.put("K", "3");
 
-        String url = "http://192.168.3.124:80/imagelist";
+        String url = "http://172.18.36.107:5001/searchK";
 
         postHOP(url, params, imageFile)
                 .thenAccept(customResponse -> {
 
-                    List<String> encodedImages = customResponse.getImages();
-                    List<Map<String, Object>> messages = customResponse.getMessages();
+                    Map<String, String> images = customResponse.getImages();
+                    Map<String, String> links = customResponse.getLinks();
+                    String message = customResponse.getMessage();
+                    String status = customResponse.getStatus();
 
-                    String image = encodedImages.get(imageNo);
-                    byte[] decodedBytes = Base64.decode(image, Base64.DEFAULT);
+                    Log.d(TAG, "status: \n" + status);
+                    Log.d(TAG, "message: \n" + message);
+                    Log.d(TAG, "links: \n" + links.toString());
+                    Log.d(TAG, "images: \n" + images.toString());
+
+                    String imageStr = images.get("top_1_image");
+                    byte[] decodedBytes = Base64.decode(imageStr, Base64.DEFAULT);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
                     runOnUiThread(() -> {
-                        setTextView("image number: " + imageNo);
+                        setTextView("top_1_image");
                         imageView.setImageBitmap(bitmap);
                     });
 
-                    for (Map<String, Object> message : messages) {
-                        Log.d(TAG, message.toString());
-                    }
+                })
+                .exceptionally(e -> {
+                    // 处理异常
+                    Log.d(TAG, "exception in interface: " + e.getMessage());
+                    return null;
+                });
+    }
+
+    private void testSAM() {
+        File imageFile = getImageFileFromDrawable(MainActivity.this, R.drawable.test_search_k);
+
+        Map<String, String> params = new HashMap<>();
+        params.put("point_coords", "230, 150");
+        params.put("point_labels", "1");
+        params.put("mode", "point");
+
+        String url = "http://172.18.36.107:5001/sam";
+
+        postHOP(url, params, imageFile)
+                .thenAccept(customResponse -> {
+
+                    Map<String, String> images = customResponse.getImages();
+                    String message = customResponse.getMessage();
+                    String status = customResponse.getStatus();
+
+                    Log.d(TAG, "status: \n" + status);
+                    Log.d(TAG, "message: \n" + message);
+                    Log.d(TAG, "images: \n" + images.toString());
+
+                    String imageStr = images.get("image4dino");
+                    byte[] decodedBytes = Base64.decode(imageStr, Base64.DEFAULT);
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                    runOnUiThread(() -> {
+                        setTextView("image4dino");
+                        imageView.setImageBitmap(bitmap);
+                    });
 
                 })
                 .exceptionally(e -> {
@@ -359,34 +394,36 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         customResponse.setStatus(status);
                     }
 
-                    // 获取图像列表
-                    JSONArray encodedImagesArray = jsonObject.getJSONArray("ImageBytes");
-                    if (encodedImagesArray != null) {
-                        List<String> images = new ArrayList<>();
-                        for (int i = 0; i < encodedImagesArray.length(); i++) {
-                            String encodedImage = encodedImagesArray.getString(i);
-                            images.add(encodedImage);
+                    // 获取消息
+                    String message = jsonObject.getString("Message");
+                    if (message != null) {
+                        customResponse.setMessage(message);
+                    }
+
+                    // 获取图像 Map
+                    JSONObject encodedImagesObject = jsonObject.getJSONObject("Content");
+                    if (encodedImagesObject != null) {
+                        Map<String, String> images = new HashMap<>();
+                        Iterator<String> keys = encodedImagesObject.keys();
+                        while (keys.hasNext()) {
+                            String key = keys.next();
+                            String encodedImage = encodedImagesObject.getString(key);
+                            images.put(key, encodedImage);
                         }
                         customResponse.setImages(images);
                     }
 
-                    // 获取消息列表
-                    JSONArray messageListArray = jsonObject.getJSONArray("Message");
-                    if (messageListArray != null) {
-                        List<Map<String, Object>> messageList = new ArrayList<>();
-                        for (int i = 0; i < messageListArray.length(); i++) {
-                            JSONObject messageDict = messageListArray.getJSONObject(i);
-                            Map<String, Object> messageMap = new HashMap<>();
-
-                            Iterator<String> keys = messageDict.keys();
-                            while (keys.hasNext()) {
-                                String key = keys.next();
-                                Object value = messageDict.get(key);
-                                messageMap.put(key, value);
-                            }
-                            messageList.add(messageMap);
+                    // 获取链接 Map
+                    JSONObject linksObject = jsonObject.getJSONObject("Link");
+                    if (linksObject != null) {
+                        Map<String, String> links = new HashMap<>();
+                        Iterator<String> keys = linksObject.keys();
+                        while (keys.hasNext()) {
+                            String key = keys.next();
+                            String link = linksObject.getString(key);
+                            links.put(key, link);
                         }
-                        customResponse.setMessages(messageList);
+                        customResponse.setLinks(links);
                     }
 
                     future.complete(customResponse);
